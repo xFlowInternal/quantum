@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BB84 Quantum Key Distribution Protocol</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: white;
+            font-family: 'Arial', sans-serif;
+            color: #333;
+            overflow-x: auto;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            min-height: 800px;
+            padding: 20px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 40px;
+            color: #2c3e50;
+            opacity: 0;
+            animation: fadeIn 1s ease-in-out 0.5s forwards;
+        }
+
+        /* Main Communication Area */
+        .communication-area {
+            position: relative;
+            height: 200px;
+            margin-bottom: 40px;
+        }
+
+        .alice, .bob {
+            position: absolute;
+            top: 50px;
+            width: 120px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        }
+
+        .alice {
+            left: 50px;
+            animation: fadeIn 1s ease-in-out 1.5s forwards;
+        }
+
+        .bob {
+            right: 50px;
+            animation: fadeIn 1s ease-in-out 2s forwards;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .alice .avatar {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .bob .avatar {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .label {
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .channels {
+            position: absolute;
+            left: 170px;
+            right: 170px;
+            top: 80px;
+            height: 120px;
+            opacity: 0;
+            animation: fadeIn 1s ease-in-out 2.5s forwards;
+        }
+
+        .quantum-channel {
+            position: absolute;
+            top: 1px; /* Moved to top - above Alice and Bob */
+            left: 0;
+            right: 0;
+            height: 60px;
+        }
+
+        .quantum-line {
+            position: absolute;
+            top: 1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3498db, #9b59b6, #e74c3c);
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .quantum-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 500;
+            color: #8e44ad;
+            white-space: nowrap;
+        }
+
+        .classical-channel {
+            position: absolute;
+            top: 130px; /* Moved to bottom - below Alice and Bob */
+            left: 0;
+            right: 0;
+            height: 60px;
+        }
+
+        .classical-line {
+            position: absolute;
+            top: 1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #7f8c8d;
+            border-radius: 1px;
+            background-image: repeating-linear-gradient(
+                90deg,
+                #7f8c8d 0px,
+                #7f8c8d 10px,
+                transparent 10px,
+                transparent 20px
+            );
+        }
+
+        .classical-label {
+            position: absolute;
+            top: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 500;
+            color: #7f8c8d;
+            white-space: nowrap;
+        }
+
+        .photon {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #fff, #9b59b6);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(155, 89, 182, 0.8);
+            opacity: 0;
+        }
+
+        .photon1 {
+            top: 24px;
+            animation: photonMove 3s ease-in-out infinite, photonFade 3s ease-in-out infinite;
+            animation-delay: 3s;
+        }
+
+        .photon2 {
+            top: 24px;
+            animation: photonMove 3s ease-in-out infinite, photonFade 3s ease-in-out infinite;
+            animation-delay: 4s;
+        }
+
+        .photon3 {
+            top: 24px;
+            animation: photonMove 3s ease-in-out infinite, photonFade 3s ease-in-out infinite;
+            animation-delay: 5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+            }
+            to {
+                box-shadow: 0 0 20px rgba(155, 89, 182, 0.8);
+            }
+        }
+
+        @keyframes photonMove {
+            0% {
+                left: 0%;
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                left: 100%;
+                opacity: 0;
+            }
+        }
+
+        @keyframes photonFade {
+            0%, 10%, 90%, 100% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* Description styles - REMOVED */
+
+        /* Protocol steps and description styles - REMOVED */
+        /* Control Buttons Area */
+        .scene-controls {
+            position: relative;
+            text-align: center;
+            margin: 40px 0;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            opacity: 0;
+            animation: fadeIn 1s ease-in-out 5s forwards;
+        }
+
+        /* Tables and Content Area */
+        .content-area {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            min-height: 300px;
+            gap: 15px; /* Reduced gap to fit wider tables */
+        }
+
+        /* Alice's Table (Left Side) */
+        .alice-table {
+            position: relative;
+            left: 0;
+            top: 0;
+            width: 380px; /* Increased width for Alice's table too */
+            background: white;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.1);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        /* Basis Rules Table (Center) */
+        .basis-rules-table {
+            position: relative;
+            top: 0;
+            width: 240px; /* Slightly reduced to make room */
+            background: white;
+            border: 2px solid #9b59b6;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.1);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        /* Photon Icons Area */
+        .photon-icons {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+
+        /* Caption Area */
+        .caption {
+            position: relative;
+            text-align: center;
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 500;
+            margin-top: 30px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+
+        .alice-table.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .alice-table h4 {
+            margin: 0 0 10px 0;
+            color: #2980b9;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .bits-table {
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .bits-table th {
+            background: #ecf0f1;
+            padding: 6px 10px;
+            border: 1px solid #bdc3c7;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .bits-table td {
+            padding: 6px 10px;
+            border: 1px solid #bdc3c7;
+            text-align: center;
+            min-width: 40px;
+        }
+
+        .bit-cell {
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .bit-cell.flipping {
+            background: #f39c12;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .bit-cell.a-bit {
+            color: #e74c3c;
+        }
+
+        .bit-cell.b-bit {
+            color: #9b59b6;
+        }
+
+        .bit-cell.photon-state {
+            color: #e67e22;
+            font-family: 'Times New Roman', serif;
+            font-weight: bold;
+        }
+
+        .caption.visible {
+            opacity: 1;
+        }
+
+        /* Scene 3 Styles */
+        .basis-rules-btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
+            transition: all 0.3s ease;
+            z-index: 101;
+            position: relative;
+        }
+
+        .basis-rules-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+        }
+
+        .basis-rules-btn:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #8e44ad, #7d3c98);
+        }
+
+        /* Scene 4 Styles */
+        .send-photons-btn {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+            transition: all 0.3s ease;
+            z-index: 101;
+            position: relative;
+            display: none;
+        }
+
+        .send-photons-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 126, 34, 0.4);
+        }
+
+        .send-photons-btn:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #d35400, #ba4a00);
+        }
+
+        .send-photons-btn.visible {
+            display: inline-block;
+        }
+
+        /* Bob's Random Bits Button */
+        .bob-random-btn {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+            transition: all 0.3s ease;
+            z-index: 101;
+            position: relative;
+            display: none;
+        }
+
+        .bob-random-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .bob-random-btn:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #229954, #1e8449);
+        }
+
+        .bob-random-btn.visible {
+            display: inline-block;
+        }
+
+        /* Bob's Measurement Button */
+        .bob-measure-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+            transition: all 0.3s ease;
+            z-index: 101;
+            position: relative;
+            display: none;
+        }
+
+        .bob-measure-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .bob-measure-btn:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #c0392b, #a93226);
+        }
+
+        .bob-measure-btn.visible {
+            display: inline-block;
+        }
+
+        /* Basis Exchange Button */
+        .basis-exchange-btn {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+            transition: all 0.3s ease;
+            z-index: 101;
+            position: relative;
+            display: none;
+        }
+
+        .basis-exchange-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .basis-exchange-btn:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #e67e22, #d35400);
+        }
+
+        .basis-exchange-btn.visible {
+            display: inline-block;
+        }
+
+        /* Traveling Basis Information */
+        .traveling-basis {
+            position: absolute;
+            padding: 4px 8px;
+            background: rgba(243, 156, 18, 0.9);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 55;
+            opacity: 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Comparison Table */
+        .comparison-area {
+            position: relative;
+            margin-top: 40px;
+            display: none;
+        }
+
+        .comparison-area.visible {
+            display: block;
+        }
+
+        .comparison-table {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border: 2px solid #f39c12;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.1);
+        }
+
+        .comparison-table h3 {
+            text-align: center;
+            color: #e67e22;
+            margin-bottom: 20px;
+        }
+
+        .comparison-bits-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .comparison-bits-table th {
+            background: #fef9e7;
+            padding: 8px;
+            border: 1px solid #f4d03f;
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .comparison-bits-table td {
+            padding: 8px;
+            border: 1px solid #f4d03f;
+            text-align: center;
+        }
+
+        .matched-row {
+            background: #d5f4e6;
+        }
+
+        .discarded-row {
+            background: #fadbd8;
+            opacity: 0.6;
+        }
+
+        .key-display {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .key-box {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .key-box h4 {
+            margin: 0 0 10px 0;
+            color: #ecf0f1;
+        }
+
+        .key-binary {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .key-decimal {
+            font-size: 18px;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        /* Traveling Photon Styles */
+        .traveling-photon {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            z-index: 50;
+            opacity: 0;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .traveling-photon.state-0 {
+            background: radial-gradient(circle, #3498db, #2980b9);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.8);
+        }
+
+        .traveling-photon.state-1 {
+            background: radial-gradient(circle, #e74c3c, #c0392b);
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+        }
+
+        .traveling-photon.state-plus {
+            background: radial-gradient(circle, #f39c12, #e67e22);
+            box-shadow: 0 0 10px rgba(243, 156, 18, 0.8);
+        }
+
+        .traveling-photon.state-minus {
+            background: radial-gradient(circle, #27ae60, #229954);
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.8);
+        }
+
+        @keyframes photonTravel {
+            0% {
+                left: 170px;
+                opacity: 1;
+            }
+            100% {
+                left: calc(100% - 170px);
+                opacity: 1;
+            }
+        }
+
+        .photon-transmission-info {
+            position: relative;
+            text-align: center;
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .photon-transmission-info.visible {
+            opacity: 1;
+        }
+
+        /* Bob's Table Styles */
+        .bob-table {
+            position: relative;
+            right: 0;
+            top: 0;
+            width: 400px; /* Increased width to accommodate all columns */
+            background: white;
+            border: 2px solid #27ae60;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.1);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+            display: none;
+        }
+
+        .bob-table.visible {
+            opacity: 1;
+            transform: translateY(0);
+            display: block;
+        }
+
+        .bob-table h4 {
+            margin: 0 0 10px 0;
+            color: #229954;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .received-photons-table {
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .received-photons-table th {
+            background: #e8f5e8;
+            padding: 6px 10px;
+            border: 1px solid #a9dfbf;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .received-photons-table td {
+            padding: 6px 10px;
+            border: 1px solid #a9dfbf;
+            text-align: center;
+            min-width: 40px;
+        }
+
+        .received-photon-cell {
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: #e67e22;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .received-photon-cell.appearing {
+            background: #2ecc71;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .bob-basis-cell {
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: #27ae60;
+        }
+
+        .bob-basis-cell.flipping {
+            background: #2ecc71;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .basis-selection-cell {
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .alice-basis-selection {
+            color: #8e44ad;
+        }
+
+        .bob-basis-selection {
+            color: #27ae60;
+        }
+
+        .basis-selection-cell.appearing {
+            background: #f39c12;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .bob-measurement-cell {
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: #e74c3c;
+        }
+
+        .bob-measurement-cell.measuring {
+            background: #3498db;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .basis-rules-table.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .basis-rules-table h4 {
+            margin: 0 0 10px 0;
+            color: #8e44ad;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .rules-table {
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .rules-table th {
+            background: #f4f1f8;
+            padding: 8px 12px;
+            border: 1px solid #d1c4e9;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .rules-table td {
+            padding: 8px 12px;
+            border: 1px solid #d1c4e9;
+            text-align: center;
+            min-width: 50px;
+        }
+
+        .rule-row {
+            transition: all 0.3s ease;
+        }
+
+        .rule-row.highlighted {
+            background: #e8f5e8;
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(155, 89, 182, 0.2);
+        }
+
+        .quantum-state {
+            font-weight: bold;
+            font-family: 'Times New Roman', serif;
+            color: #8e44ad;
+        }
+
+        .basis-cell {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .photon-icons.visible {
+            opacity: 1;
+        }
+
+        .photon-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .photon-icon.state-0 {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .photon-icon.state-1 {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .photon-icon.state-plus {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .photon-icon.state-minus {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+
+        .photon-icon.pulsing {
+            animation: photonPulse 0.8s ease-in-out;
+        }
+
+        @keyframes photonPulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+                box-shadow: 0 6px 25px rgba(155, 89, 182, 0.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">BB84 Quantum Key Distribution Protocol</h1>
+        
+        <!-- Communication Area -->
+        <div class="communication-area">
+            <!-- Alice -->
+            <div class="alice">
+                <div class="avatar">A</div>
+                <div class="label">Alice (Sender)</div>
+            </div>
+
+            <!-- Bob -->
+            <div class="bob">
+                <div class="avatar">B</div>
+                <div class="label">Bob (Receiver)</div>
+            </div>
+
+            <!-- Communication Channels -->
+            <div class="channels">
+                <!-- Quantum Channel -->
+                <div class="quantum-channel">
+                    <div class="quantum-line"></div>
+                    <div class="quantum-label">Quantum Channel (Photons)</div>
+                    <div class="photon photon1"></div>
+                    <div class="photon photon2"></div>
+                    <div class="photon photon3"></div>
+                </div>
+
+                <!-- Classical Channel -->
+                <div class="classical-channel">
+                    <div class="classical-line"></div>
+                    <div class="classical-label">Public Classical Channel</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="scene-controls">
+            <button class="generate-btn" onclick="generateAliceBits()">
+                🔘 Generate Alice's Random Bits
+            </button>
+            <button class="basis-rules-btn" onclick="showBasisRules()" id="basisRulesBtn">
+                🔘 Show Alice's Basis Rules
+            </button>
+            <button class="send-photons-btn" onclick="sendPhotonsToBob()" id="sendPhotonsBtn">
+                🔘 Send Photons to Bob
+            </button>
+            <button class="bob-random-btn" onclick="generateBobsRandomBits()" id="bobRandomBtn">
+                🔘 Generate Bob's Random Bits
+            </button>
+            <button class="bob-measure-btn" onclick="bobMeasurePhotons()" id="bobMeasureBtn">
+                🔘 Bob Measures Photons
+            </button>
+            <button class="basis-exchange-btn" onclick="exchangeBasisInformation()" id="basisExchangeBtn">
+                🔘 Exchange b and b' (Public Channel)
+            </button>
+        </div>
+
+        <!-- Content Area with Tables -->
+        <div class="content-area">
+            <!-- Alice's Table (Left) -->
+            <div class="alice-table" id="aliceTable">
+                <h4>Alice's Random Bit Generation</h4>
+                <table class="bits-table">
+                    <thead>
+                        <tr>
+                            <th>Index</th>
+                            <th>a (bit value)</th>
+                            <th>b (basis bit)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bitsTableBody">
+                        <!-- Bits will be generated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Basis Rules Table (Center-Right) -->
+            <div class="basis-rules-table" id="basisRulesTable">
+                <h4>Alice's Basis Selection Rules</h4>
+                <table class="rules-table">
+                    <thead>
+                        <tr>
+                            <th>(a, b)</th>
+                            <th>Basis</th>
+                            <th>Quantum State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="rule-row" id="rule-00">
+                            <td>(0, 0)</td>
+                            <td class="basis-cell">Z</td>
+                            <td class="quantum-state">|0⟩</td>
+                        </tr>
+                        <tr class="rule-row" id="rule-10">
+                            <td>(1, 0)</td>
+                            <td class="basis-cell">Z</td>
+                            <td class="quantum-state">|1⟩</td>
+                        </tr>
+                        <tr class="rule-row" id="rule-01">
+                            <td>(0, 1)</td>
+                            <td class="basis-cell">X</td>
+                            <td class="quantum-state">|+⟩</td>
+                        </tr>
+                        <tr class="rule-row" id="rule-11">
+                            <td>(1, 1)</td>
+                            <td class="basis-cell">X</td>
+                            <td class="quantum-state">|−⟩</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bob's Table (Right) -->
+            <div class="bob-table" id="bobTable">
+                <h4>Bob's Received Photons</h4>
+                <table class="received-photons-table">
+                    <thead>
+                        <tr>
+                            <th>Index</th>
+                            <th>Received State</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receivedPhotonsTableBody">
+                        <!-- Received photons will be shown here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Photon Icons -->
+        <div class="photon-icons" id="photonIcons">
+            <div class="photon-icon state-0" id="photon-0">|0⟩</div>
+            <div class="photon-icon state-1" id="photon-1">|1⟩</div>
+            <div class="photon-icon state-plus" id="photon-plus">|+⟩</div>
+            <div class="photon-icon state-minus" id="photon-minus">|−⟩</div>
+        </div>
+
+        <!-- Caption -->
+        <div class="caption" id="caption">
+            Alice randomly chooses bit values (a) and bases (b)
+        </div>
+
+        <!-- Photon Transmission Info -->
+        <div class="photon-transmission-info" id="transmissionInfo">
+            Photons are traveling through the quantum channel...
+        </div>
+
+        <!-- Comparison Area -->
+        <div class="comparison-area" id="comparisonArea">
+            <div class="comparison-table">
+                <h3>Basis Comparison and Key Generation</h3>
+                <table class="comparison-bits-table" id="comparisonTable">
+                    <thead>
+                        <tr>
+                            <th>Index</th>
+                            <th>Alice's a</th>
+                            <th>Alice's b</th>
+                            <th>Bob's b'</th>
+                            <th>Bob's a'</th>
+                            <th>Basis Match</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonTableBody">
+                        <!-- Comparison data will be populated here -->
+                    </tbody>
+                </table>
+                
+                <div class="key-display">
+                    <div class="key-box">
+                        <h4>Alice's Key</h4>
+                        <div class="key-binary" id="aliceKeyBinary">--</div>
+                        <div class="key-decimal" id="aliceKeyDecimal">--</div>
+                    </div>
+                    <div class="key-box">
+                        <h4>Bob's Key</h4>
+                        <div class="key-binary" id="bobKeyBinary">--</div>
+                        <div class="key-decimal" id="bobKeyDecimal">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let aliceBits = [];
+        let aliceBases = [];
+        let receivedPhotons = []; // Track photons received by Bob
+        let bobBases = []; // Bob's random measurement bases (b')
+        let bobMeasurements = []; // Bob's measurement results (a')
+
+        // Make function globally accessible for debugging
+        window.showBasisRules = function() {
+            console.log('showBasisRules function called');
+            
+            // Show the basis rules table and photon icons
+            const rulesTable = document.getElementById('basisRulesTable');
+            const photonIcons = document.getElementById('photonIcons');
+            const caption = document.getElementById('caption');
+            
+            console.log('Elements found:', {
+                rulesTable: !!rulesTable,
+                photonIcons: !!photonIcons,
+                caption: !!caption
+            });
+            
+            // Force show elements
+            if (rulesTable) {
+                rulesTable.style.opacity = '1';
+                rulesTable.style.transform = 'translateY(0)';
+                rulesTable.classList.add('visible');
+                console.log('Rules table shown');
+            }
+            
+            if (photonIcons) {
+                photonIcons.style.opacity = '1';
+                photonIcons.classList.add('visible');
+                console.log('Photon icons shown');
+            }
+
+            // Update caption
+            if (caption) {
+                caption.textContent = 'Alice applies basis selection rules to prepare quantum states';
+                caption.classList.add('visible');
+                console.log('Caption updated');
+            }
+
+            // Animate through each rule with highlighting
+            setTimeout(() => {
+                animateBasisRules(() => {
+                    // After animation completes, add photon state column
+                    addPhotonStateColumn();
+                });
+            }, 100);
+        };
+
+        function getPhotonState(aBit, bBit) {
+            // Apply basis selection rules
+            if (aBit === 0 && bBit === 0) return '|0⟩';
+            if (aBit === 1 && bBit === 0) return '|1⟩';
+            if (aBit === 0 && bBit === 1) return '|+⟩';
+            if (aBit === 1 && bBit === 1) return '|−⟩';
+            return '?';
+        }
+
+        function addPhotonStateColumn() {
+            console.log('Adding photon state column');
+            
+            // Add header for photon state column
+            const headerRow = document.querySelector('.bits-table thead tr');
+            if (headerRow && !document.getElementById('photon-state-header')) {
+                const photonHeader = document.createElement('th');
+                photonHeader.textContent = 'Photon State';
+                photonHeader.id = 'photon-state-header';
+                headerRow.appendChild(photonHeader);
+                
+                // Also add Alice's basis selection header
+                const aliceBasisHeader = document.createElement('th');
+                aliceBasisHeader.textContent = 'Alice Basis Selection';
+                aliceBasisHeader.id = 'alice-basis-selection-header';
+                headerRow.appendChild(aliceBasisHeader);
+            }
+
+            // Add photon state cells and Alice's basis selection cells for each row
+            const tableRows = document.querySelectorAll('#bitsTableBody tr');
+            tableRows.forEach((row, index) => {
+                if (index < aliceBits.length) {
+                    // Add photon state cell if not exists
+                    if (!row.querySelector('.photon-state')) {
+                        const photonCell = document.createElement('td');
+                        photonCell.className = 'bit-cell photon-state';
+                        photonCell.textContent = '?';
+                        photonCell.id = `photon-${index}`;
+                        row.appendChild(photonCell);
+                    }
+                    
+                    // Add Alice's basis selection cell if not exists
+                    if (!row.querySelector('.alice-basis-selection')) {
+                        const aliceBasisCell = document.createElement('td');
+                        aliceBasisCell.className = 'basis-selection-cell alice-basis-selection';
+                        aliceBasisCell.textContent = '?';
+                        aliceBasisCell.id = `alice-basis-selection-${index}`;
+                        row.appendChild(aliceBasisCell);
+                    }
+                }
+            });
+
+            // Animate photon states and basis selections appearing
+            animatePhotonStates();
+
+            // Update caption
+            const caption = document.getElementById('caption');
+            if (caption) {
+                caption.textContent = 'Alice prepares photons according to basis selection rules';
+            }
+        }
+
+        function animatePhotonStates() {
+            let currentIndex = 0;
+            
+            function showNextPhotonState() {
+                if (currentIndex >= aliceBits.length) {
+                    // Update final caption
+                    const caption = document.getElementById('caption');
+                    if (caption) {
+                        caption.textContent = 'Alice has prepared all photons for transmission';
+                    }
+                    
+                    // Show the send photons button
+                    setTimeout(() => {
+                        const sendBtn = document.getElementById('sendPhotonsBtn');
+                        if (sendBtn) {
+                            sendBtn.classList.add('visible');
+                            sendBtn.style.display = 'inline-block';
+                        }
+                    }, 1000);
+                    return;
+                }
+
+                const photonCell = document.getElementById(`photon-${currentIndex}`);
+                const aliceBasisCell = document.getElementById(`alice-basis-selection-${currentIndex}`);
+                
+                if (photonCell) {
+                    // Add flipping animation to photon cell
+                    photonCell.classList.add('flipping');
+                    
+                    // Simulate random flipping
+                    let flipCount = 0;
+                    const maxFlips = 3 + Math.floor(Math.random() * 3);
+                    const possibleStates = ['|0⟩', '|1⟩', '|+⟩', '|−⟩'];
+
+                    const flipInterval = setInterval(() => {
+                        photonCell.textContent = possibleStates[Math.floor(Math.random() * 4)];
+                        flipCount++;
+
+                        if (flipCount >= maxFlips) {
+                            clearInterval(flipInterval);
+                            
+                            // Set final photon state based on (a,b) values
+                            const finalState = getPhotonState(aliceBits[currentIndex], aliceBases[currentIndex]);
+                            photonCell.textContent = finalState;
+                            
+                            // Remove flipping animation
+                            photonCell.classList.remove('flipping');
+                            
+                            // Set Alice's basis selection
+                            if (aliceBasisCell) {
+                                aliceBasisCell.classList.add('appearing');
+                                const basisSelection = aliceBases[currentIndex] === 0 ? 'Z' : 'X';
+                                aliceBasisCell.textContent = basisSelection;
+                                
+                                setTimeout(() => {
+                                    aliceBasisCell.classList.remove('appearing');
+                                }, 300);
+                            }
+
+                            currentIndex++;
+                            
+                            // Move to next photon state after a short delay
+                            setTimeout(showNextPhotonState, 300);
+                        }
+                    }, 150);
+                }
+            }
+
+            // Start animation after a brief delay
+            setTimeout(showNextPhotonState, 500);
+        }
+
+        // Scene 4: Send Photons to Bob
+        window.sendPhotonsToBob = function() {
+            console.log('sendPhotonsToBob function called');
+            
+            // Update caption
+            const caption = document.getElementById('caption');
+            if (caption) {
+                caption.textContent = 'Photons are traveling through the quantum channel to Bob';
+                caption.classList.add('visible');
+            }
+
+            // Show transmission info
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            if (transmissionInfo) {
+                transmissionInfo.classList.add('visible');
+            }
+
+            // Start sending photons one by one
+            sendPhotonsSequentially();
+        };
+
+        function sendPhotonsSequentially() {
+            let currentPhotonIndex = 0;
+            receivedPhotons = []; // Reset received photons array
+            
+            console.log(`Starting to send ${aliceBits.length} photons`);
+            
+            function sendNextPhoton() {
+                if (currentPhotonIndex >= aliceBits.length) {
+                    console.log(`All ${aliceBits.length} photons sent.`);
+                    return;
+                }
+
+                // Get photon state for current index
+                const photonState = getPhotonState(aliceBits[currentPhotonIndex], aliceBases[currentPhotonIndex]);
+                
+                console.log(`Sending photon ${currentPhotonIndex + 1}/${aliceBits.length}: ${photonState}`);
+                
+                // Create traveling photon element
+                createTravelingPhoton(photonState, currentPhotonIndex);
+                
+                currentPhotonIndex++;
+                
+                // Send next photon after delay
+                setTimeout(sendNextPhoton, 1500);
+            }
+
+            // Start sending photons
+            setTimeout(sendNextPhoton, 500);
+        }
+
+        function createTravelingPhoton(photonState, index) {
+            const photon = document.createElement('div');
+            photon.className = 'traveling-photon';
+            
+            // Set photon class based on state
+            if (photonState === '|0⟩') photon.classList.add('state-0');
+            else if (photonState === '|1⟩') photon.classList.add('state-1');
+            else if (photonState === '|+⟩') photon.classList.add('state-plus');
+            else if (photonState === '|−⟩') photon.classList.add('state-minus');
+            
+            photon.textContent = photonState;
+            
+            // Position photon at the quantum channel
+            const communicationArea = document.querySelector('.communication-area');
+            if (communicationArea) {
+                photon.style.position = 'absolute';
+                photon.style.top = '40px'; // Updated to align with new quantum channel position
+                photon.style.left = '170px'; // Start from Alice's side
+                photon.style.zIndex = '60';
+                
+                communicationArea.appendChild(photon);
+                
+                // Animate photon travel
+                setTimeout(() => {
+                    photon.style.transition = 'left 2s ease-in-out, opacity 0.3s ease-in-out';
+                    photon.style.opacity = '1';
+                    photon.style.left = 'calc(100% - 190px)'; // End near Bob
+                }, 100);
+                
+                // When photon reaches Bob, add to received photons and update table
+                setTimeout(() => {
+                    const photonData = {
+                        index: index + 1,
+                        state: photonState
+                    };
+                    receivedPhotons.push(photonData);
+                    console.log(`Bob received photon ${index + 1}: ${photonState} (Total received: ${receivedPhotons.length})`);
+                    
+                    // Show Bob's table when first photon arrives
+                    if (receivedPhotons.length === 1) {
+                        initializeBobsTable();
+                    }
+                    
+                    // Update Bob's table with this photon
+                    updateBobsTableWithPhoton(photonData, receivedPhotons.length - 1);
+                    
+                    // Check if all photons received
+                    if (receivedPhotons.length === aliceBits.length) {
+                        setTimeout(() => {
+                            const transmissionInfo = document.getElementById('transmissionInfo');
+                            if (transmissionInfo) {
+                                transmissionInfo.textContent = 'All photons received! Bob can now generate his measurement bases.';
+                            }
+                            
+                            // Show Bob's random bits button
+                            const bobRandomBtn = document.getElementById('bobRandomBtn');
+                            if (bobRandomBtn) {
+                                bobRandomBtn.classList.add('visible');
+                                bobRandomBtn.style.display = 'inline-block';
+                            }
+                        }, 500);
+                    }
+                    
+                }, 2100);
+                
+                // Remove photon after animation
+                setTimeout(() => {
+                    photon.style.opacity = '0';
+                    setTimeout(() => {
+                        if (photon.parentNode) {
+                            photon.parentNode.removeChild(photon);
+                        }
+                    }, 300);
+                }, 2200);
+                
+                // Update transmission info
+                const transmissionInfo = document.getElementById('transmissionInfo');
+                if (transmissionInfo) {
+                    transmissionInfo.textContent = `Sending photon ${index + 1}/${aliceBits.length}: ${photonState}`;
+                }
+                
+                console.log(`Sent photon ${index + 1}: ${photonState}`);
+            }
+        }
+
+        function initializeBobsTable() {
+            console.log('Initializing Bob\'s table - first photon arrived');
+            
+            // Update captions
+            const caption = document.getElementById('caption');
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            
+            if (caption) {
+                caption.textContent = 'Bob is receiving photons and recording their states';
+            }
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = 'Bob\'s table is now active - recording incoming photons...';
+            }
+
+            // Show Bob's table
+            const bobTable = document.getElementById('bobTable');
+            if (bobTable) {
+                bobTable.classList.add('visible');
+            }
+
+            // Create all rows in Bob's table (empty initially)
+            const tbody = document.getElementById('receivedPhotonsTableBody');
+            if (tbody) {
+                tbody.innerHTML = '';
+
+                for (let i = 0; i < aliceBits.length; i++) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${i + 1}</td>
+                        <td class="received-photon-cell" id="received-${i}">--</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            }
+        }
+
+        function updateBobsTableWithPhoton(photonData, arrayIndex) {
+            console.log(`Updating Bob's table with photon ${photonData.index}: ${photonData.state}`);
+            
+            const photonCell = document.getElementById(`received-${arrayIndex}`);
+            if (photonCell) {
+                // Add appearing animation
+                photonCell.classList.add('appearing');
+                photonCell.textContent = photonData.state;
+                
+                // Remove animation after a short time
+                setTimeout(() => {
+                    photonCell.classList.remove('appearing');
+                }, 600);
+                
+                // Update transmission info
+                const transmissionInfo = document.getElementById('transmissionInfo');
+                if (transmissionInfo) {
+                    transmissionInfo.textContent = `Photon ${photonData.index} received: ${photonData.state} (${receivedPhotons.length}/${aliceBits.length})`;
+                }
+            }
+        }
+
+        // Bob's Random Basis Generation
+        window.generateBobsRandomBits = function() {
+            console.log('generateBobsRandomBits function called');
+            
+            // Generate 16 random bits for Bob's measurement bases
+            bobBases = [];
+            for (let i = 0; i < aliceBits.length; i++) {
+                bobBases.push(Math.random() < 0.5 ? 0 : 1);
+            }
+            
+            console.log('Bob\'s random bases generated:', bobBases);
+            
+            // Add b' column to Bob's table
+            addBobBasisColumn();
+            
+            // Update captions
+            const caption = document.getElementById('caption');
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            
+            if (caption) {
+                caption.textContent = 'Bob generates random measurement bases for each received photon';
+            }
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = 'Bob is generating random measurement bases...';
+            }
+        };
+
+        function addBobBasisColumn() {
+            console.log('Adding Bob\'s basis column to the table');
+            
+            // Add header for Bob's basis column
+            const headerRow = document.querySelector('.received-photons-table thead tr');
+            if (headerRow && !document.getElementById('bob-basis-header')) {
+                const basisHeader = document.createElement('th');
+                basisHeader.textContent = 'b\' (Bob\'s Basis)';
+                basisHeader.id = 'bob-basis-header';
+                headerRow.appendChild(basisHeader);
+                
+                // Also add Bob's basis selection header
+                const bobBasisSelectionHeader = document.createElement('th');
+                bobBasisSelectionHeader.textContent = 'Bob Basis Selection';
+                bobBasisSelectionHeader.id = 'bob-basis-selection-header';
+                headerRow.appendChild(bobBasisSelectionHeader);
+            }
+
+            // Add basis cells and basis selection cells for each row
+            const tableRows = document.querySelectorAll('#receivedPhotonsTableBody tr');
+            tableRows.forEach((row, index) => {
+                if (index < bobBases.length) {
+                    // Add Bob's basis bit cell if not exists
+                    if (!row.querySelector('.bob-basis-cell')) {
+                        const basisCell = document.createElement('td');
+                        basisCell.className = 'bob-basis-cell';
+                        basisCell.textContent = '?';
+                        basisCell.id = `bob-basis-${index}`;
+                        row.appendChild(basisCell);
+                    }
+                    
+                    // Add Bob's basis selection cell if not exists
+                    if (!row.querySelector('.bob-basis-selection')) {
+                        const bobBasisSelectionCell = document.createElement('td');
+                        bobBasisSelectionCell.className = 'basis-selection-cell bob-basis-selection';
+                        bobBasisSelectionCell.textContent = '?';
+                        bobBasisSelectionCell.id = `bob-basis-selection-${index}`;
+                        row.appendChild(bobBasisSelectionCell);
+                    }
+                }
+            });
+
+            // Animate Bob's basis bits appearing
+            animateBobBasisBits();
+        }
+
+        function animateBobBasisBits() {
+            let currentIndex = 0;
+            
+            function showNextBasisBit() {
+                if (currentIndex >= bobBases.length) {
+                    // All basis bits shown
+                    const transmissionInfo = document.getElementById('transmissionInfo');
+                    const caption = document.getElementById('caption');
+                    
+                    if (transmissionInfo) {
+                        transmissionInfo.textContent = 'Bob has generated all measurement bases. Ready for measurement!';
+                    }
+                    
+                    if (caption) {
+                        caption.textContent = 'Bob can now measure each photon using his chosen bases';
+                    }
+                    
+                    // Show Bob's measurement button
+                    setTimeout(() => {
+                        const bobMeasureBtn = document.getElementById('bobMeasureBtn');
+                        if (bobMeasureBtn) {
+                            bobMeasureBtn.classList.add('visible');
+                            bobMeasureBtn.style.display = 'inline-block';
+                        }
+                    }, 1000);
+                    
+                    return;
+                }
+
+                const basisCell = document.getElementById(`bob-basis-${currentIndex}`);
+                const bobBasisSelectionCell = document.getElementById(`bob-basis-selection-${currentIndex}`);
+                
+                if (basisCell) {
+                    // Add flipping animation
+                    basisCell.classList.add('flipping');
+                    
+                    // Simulate random flipping
+                    let flipCount = 0;
+                    const maxFlips = 3 + Math.floor(Math.random() * 3);
+
+                    const flipInterval = setInterval(() => {
+                        basisCell.textContent = Math.random() < 0.5 ? '0' : '1';
+                        flipCount++;
+
+                        if (flipCount >= maxFlips) {
+                            clearInterval(flipInterval);
+                            
+                            // Set final basis value
+                            basisCell.textContent = bobBases[currentIndex];
+                            
+                            // Remove flipping animation
+                            basisCell.classList.remove('flipping');
+                            
+                            // Set Bob's basis selection
+                            if (bobBasisSelectionCell) {
+                                bobBasisSelectionCell.classList.add('appearing');
+                                const basisSelection = bobBases[currentIndex] === 0 ? 'Z' : 'X';
+                                bobBasisSelectionCell.textContent = basisSelection;
+                                
+                                setTimeout(() => {
+                                    bobBasisSelectionCell.classList.remove('appearing');
+                                }, 300);
+                            }
+
+                            currentIndex++;
+                            
+                            // Move to next basis bit after a short delay
+                            setTimeout(showNextBasisBit, 200);
+                        }
+                    }, 100);
+                }
+            }
+
+            // Start animation after a brief delay
+            setTimeout(showNextBasisBit, 500);
+        }
+
+        // Bob's Photon Measurement
+        window.bobMeasurePhotons = function() {
+            console.log('bobMeasurePhotons function called');
+            
+            // Calculate Bob's measurement results
+            bobMeasurements = [];
+            for (let i = 0; i < receivedPhotons.length; i++) {
+                const photonState = receivedPhotons[i].state;
+                const bobBasis = bobBases[i];
+                const measurement = calculateBobMeasurement(photonState, bobBasis);
+                bobMeasurements.push(measurement);
+            }
+            
+            console.log('Bob\'s measurements calculated:', bobMeasurements);
+            
+            // Add measurement column to Bob's table
+            addBobMeasurementColumn();
+            
+            // Update captions
+            const caption = document.getElementById('caption');
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            
+            if (caption) {
+                caption.textContent = 'Bob measures each photon using his chosen basis';
+            }
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = 'Bob is measuring photons...';
+            }
+        };
+
+        function calculateBobMeasurement(photonState, bobBasis) {
+            // Measurement logic based on quantum mechanics
+            if (bobBasis === 0) { // Z basis measurement
+                if (photonState === '|0⟩') return 0;
+                if (photonState === '|1⟩') return 1;
+                // For diagonal states in Z basis, uncertain result
+                return 'X'; // Basis mismatch - uncertain measurement
+            } else { // X basis measurement (bobBasis === 1)
+                if (photonState === '|+⟩') return 0;
+                if (photonState === '|−⟩') return 1;
+                // For rectilinear states in X basis, uncertain result
+                return 'X'; // Basis mismatch - uncertain measurement
+            }
+        }
+
+        function addBobMeasurementColumn() {
+            console.log('Adding Bob\'s measurement column to the table');
+            
+            // Add header for Bob's measurement column
+            const headerRow = document.querySelector('.received-photons-table thead tr');
+            if (headerRow && !document.getElementById('bob-measurement-header')) {
+                const measurementHeader = document.createElement('th');
+                measurementHeader.textContent = 'a\' (Bob\'s Result)';
+                measurementHeader.id = 'bob-measurement-header';
+                headerRow.appendChild(measurementHeader);
+            }
+
+            // Add measurement cells for each row
+            const tableRows = document.querySelectorAll('#receivedPhotonsTableBody tr');
+            tableRows.forEach((row, index) => {
+                if (index < bobMeasurements.length && !row.querySelector('.bob-measurement-cell')) {
+                    const measurementCell = document.createElement('td');
+                    measurementCell.className = 'bob-measurement-cell';
+                    measurementCell.textContent = '?';
+                    measurementCell.id = `bob-measurement-${index}`;
+                    row.appendChild(measurementCell);
+                }
+            });
+
+            // Animate Bob's measurements appearing
+            animateBobMeasurements();
+        }
+
+        function animateBobMeasurements() {
+            let currentIndex = 0;
+            
+            function showNextMeasurement() {
+                if (currentIndex >= bobMeasurements.length) {
+                    // All measurements shown
+                    const transmissionInfo = document.getElementById('transmissionInfo');
+                    const caption = document.getElementById('caption');
+                    
+                    if (transmissionInfo) {
+                        transmissionInfo.textContent = 'Bob has completed all measurements. Ready for basis comparison!';
+                    }
+                    
+                    if (caption) {
+                        caption.textContent = 'Bob has measured all photons. Ready to exchange basis information publicly.';
+                    }
+                    
+                    // Show basis exchange button
+                    setTimeout(() => {
+                        const basisExchangeBtn = document.getElementById('basisExchangeBtn');
+                        if (basisExchangeBtn) {
+                            basisExchangeBtn.classList.add('visible');
+                            basisExchangeBtn.style.display = 'inline-block';
+                        }
+                    }, 1000);
+                    
+                    return;
+                }
+
+                const measurementCell = document.getElementById(`bob-measurement-${currentIndex}`);
+                if (measurementCell) {
+                    // Add measuring animation
+                    measurementCell.classList.add('measuring');
+                    
+                    // Simulate measurement process
+                    let measureCount = 0;
+                    const maxMeasures = 4 + Math.floor(Math.random() * 3);
+
+                    const measureInterval = setInterval(() => {
+                        // Show random values during measurement
+                        const randomValues = ['0', '1', 'X'];
+                        measurementCell.textContent = randomValues[Math.floor(Math.random() * 3)];
+                        measureCount++;
+
+                        if (measureCount >= maxMeasures) {
+                            clearInterval(measureInterval);
+                            
+                            // Set final measurement result
+                            measurementCell.textContent = bobMeasurements[currentIndex];
+                            
+                            // Remove measuring animation
+                            measurementCell.classList.remove('measuring');
+
+                            currentIndex++;
+                            
+                            // Move to next measurement after a short delay
+                            setTimeout(showNextMeasurement, 300);
+                        }
+                    }, 120);
+                }
+            }
+
+            // Start animation after a brief delay
+            setTimeout(showNextMeasurement, 500);
+        }
+
+        // Basis Exchange and Key Generation
+        window.exchangeBasisInformation = function() {
+            console.log('exchangeBasisInformation function called');
+            
+            // Update captions
+            const caption = document.getElementById('caption');
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            
+            if (caption) {
+                caption.textContent = 'Alice and Bob exchange their basis choices over the public channel';
+            }
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = 'Exchanging basis information publicly...';
+            }
+            
+            // Animate basis information traveling over classical channel
+            animateBasisExchange();
+        };
+
+        function animateBasisExchange() {
+            // Create basis information strings
+            const aliceBasisString = aliceBases.join('');
+            const bobBasisString = bobBases.join('');
+            
+            // Animate Alice's basis going to Bob
+            setTimeout(() => {
+                createTravelingBasisInfo(`Alice b: ${aliceBasisString}`, 'alice-to-bob');
+            }, 500);
+            
+            // Animate Bob's basis going to Alice
+            setTimeout(() => {
+                createTravelingBasisInfo(`Bob b': ${bobBasisString}`, 'bob-to-alice');
+            }, 1500);
+            
+            // After both animations, show comparison table
+            setTimeout(() => {
+                showComparisonTable();
+            }, 4000);
+        }
+
+        function createTravelingBasisInfo(basisText, direction) {
+            const basisInfo = document.createElement('div');
+            basisInfo.className = 'traveling-basis';
+            basisInfo.textContent = basisText;
+            
+            const communicationArea = document.querySelector('.communication-area');
+            if (communicationArea) {
+                basisInfo.style.position = 'absolute';
+                basisInfo.style.top = '160px'; // Updated to align with new classical channel position
+                basisInfo.style.zIndex = '55';
+                
+                if (direction === 'alice-to-bob') {
+                    basisInfo.style.left = '170px'; // Start from Alice's side
+                } else {
+                    basisInfo.style.right = '170px'; // Start from Bob's side
+                }
+                
+                communicationArea.appendChild(basisInfo);
+                
+                // Animate basis info travel
+                setTimeout(() => {
+                    basisInfo.style.transition = 'left 2s ease-in-out, right 2s ease-in-out, opacity 0.3s ease-in-out';
+                    basisInfo.style.opacity = '1';
+                    
+                    if (direction === 'alice-to-bob') {
+                        basisInfo.style.left = 'calc(100% - 250px)'; // End near Bob
+                    } else {
+                        basisInfo.style.right = 'calc(100% - 250px)'; // End near Alice
+                    }
+                }, 100);
+                
+                // Remove basis info after animation
+                setTimeout(() => {
+                    basisInfo.style.opacity = '0';
+                    setTimeout(() => {
+                        if (basisInfo.parentNode) {
+                            basisInfo.parentNode.removeChild(basisInfo);
+                        }
+                    }, 300);
+                }, 2200);
+            }
+        }
+
+        function showComparisonTable() {
+            console.log('Showing comparison table and generating keys');
+            
+            // Update captions
+            const caption = document.getElementById('caption');
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            
+            if (caption) {
+                caption.textContent = 'Comparing bases and generating shared secret key';
+            }
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = 'Basis comparison complete. Generating keys...';
+            }
+            
+            // Show comparison area
+            const comparisonArea = document.getElementById('comparisonArea');
+            if (comparisonArea) {
+                comparisonArea.classList.add('visible');
+            }
+            
+            // Generate comparison table
+            generateComparisonTable();
+        }
+
+        function generateComparisonTable() {
+            const tbody = document.getElementById('comparisonTableBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            let aliceKey = [];
+            let bobKey = [];
+            
+            for (let i = 0; i < aliceBits.length; i++) {
+                const row = document.createElement('tr');
+                const basisMatch = aliceBases[i] === bobBases[i];
+                const status = basisMatch ? 'Keep' : 'Discard';
+                
+                // Only include in key if bases match and Bob's measurement is not 'X'
+                if (basisMatch && bobMeasurements[i] !== 'X') {
+                    aliceKey.push(aliceBits[i]);
+                    bobKey.push(bobMeasurements[i]);
+                    row.className = 'matched-row';
+                } else {
+                    row.className = 'discarded-row';
+                }
+                
+                row.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${aliceBits[i]}</td>
+                    <td>${aliceBases[i]}</td>
+                    <td>${bobBases[i]}</td>
+                    <td>${bobMeasurements[i]}</td>
+                    <td>${basisMatch ? '✓' : '✗'}</td>
+                    <td>${status}</td>
+                `;
+                
+                tbody.appendChild(row);
+            }
+            
+            // Display keys
+            displayKeys(aliceKey, bobKey);
+        }
+
+        function displayKeys(aliceKey, bobKey) {
+            const aliceKeyBinary = document.getElementById('aliceKeyBinary');
+            const aliceKeyDecimal = document.getElementById('aliceKeyDecimal');
+            const bobKeyBinary = document.getElementById('bobKeyBinary');
+            const bobKeyDecimal = document.getElementById('bobKeyDecimal');
+            
+            if (aliceKey.length > 0) {
+                const aliceBinaryString = aliceKey.join('');
+                const aliceDecimalValue = parseInt(aliceBinaryString, 2);
+                
+                if (aliceKeyBinary) aliceKeyBinary.textContent = aliceBinaryString;
+                if (aliceKeyDecimal) aliceKeyDecimal.textContent = `Decimal: ${aliceDecimalValue}`;
+            }
+            
+            if (bobKey.length > 0) {
+                const bobBinaryString = bobKey.join('');
+                const bobDecimalValue = parseInt(bobBinaryString, 2);
+                
+                if (bobKeyBinary) bobKeyBinary.textContent = bobBinaryString;
+                if (bobKeyDecimal) bobKeyDecimal.textContent = `Decimal: ${bobDecimalValue}`;
+            }
+            
+            // Final status update
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            const caption = document.getElementById('caption');
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = `Key generation complete! Shared key length: ${aliceKey.length} bits`;
+            }
+            
+            if (caption) {
+                const keyMatch = aliceKey.join('') === bobKey.join('');
+                caption.textContent = keyMatch ? 
+                    'Success! Alice and Bob have generated identical secret keys.' :
+                    'Key mismatch detected - possible eavesdropping or measurement errors.';
+            }
+        }
+
+        function showBobsReceivedPhotons() {
+            console.log(`Showing Bob's received photons table. Received: ${receivedPhotons.length}, Expected: ${aliceBits.length}`);
+            
+            // Safety check - ensure we have all photons
+            if (receivedPhotons.length < aliceBits.length) {
+                console.warn(`Missing photons! Expected ${aliceBits.length}, got ${receivedPhotons.length}. Waiting longer...`);
+                setTimeout(() => {
+                    showBobsReceivedPhotons();
+                }, 1000);
+                return;
+            }
+            
+            // Update captions
+            const caption = document.getElementById('caption');
+            const transmissionInfo = document.getElementById('transmissionInfo');
+            
+            if (caption) {
+                caption.textContent = 'All photons have been transmitted to Bob';
+            }
+            
+            if (transmissionInfo) {
+                transmissionInfo.textContent = 'Bob is recording the received photon states...';
+            }
+
+            // Show Bob's table
+            const bobTable = document.getElementById('bobTable');
+            if (bobTable) {
+                bobTable.classList.add('visible');
+            }
+
+            // Populate Bob's table
+            const tbody = document.getElementById('receivedPhotonsTableBody');
+            if (tbody) {
+                tbody.innerHTML = '';
+
+                receivedPhotons.forEach((photon, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${photon.index}</td>
+                        <td class="received-photon-cell" id="received-${index}">?</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Animate photon states appearing in Bob's table
+                animateBobsReceivedPhotons();
+            }
+        }
+
+        function animateBobsReceivedPhotons() {
+            let currentIndex = 0;
+            
+            function showNextReceivedPhoton() {
+                if (currentIndex >= receivedPhotons.length) {
+                    // All photons shown in Bob's table
+                    const transmissionInfo = document.getElementById('transmissionInfo');
+                    if (transmissionInfo) {
+                        transmissionInfo.textContent = 'Bob has recorded all received photon states. Transmission complete!';
+                    }
+                    return;
+                }
+
+                const photonCell = document.getElementById(`received-${currentIndex}`);
+                if (photonCell) {
+                    // Add appearing animation
+                    photonCell.classList.add('appearing');
+                    
+                    // Show the received photon state
+                    setTimeout(() => {
+                        photonCell.textContent = receivedPhotons[currentIndex].state;
+                        photonCell.classList.remove('appearing');
+                    }, 300);
+
+                    currentIndex++;
+                    
+                    // Move to next photon after a short delay
+                    setTimeout(showNextReceivedPhoton, 400);
+                }
+            }
+
+            // Start animation after a brief delay
+            setTimeout(showNextReceivedPhoton, 1000);
+        }
+
+        function generateAliceBits() {
+            // Clear previous data
+            aliceBits = [];
+            aliceBases = [];
+            
+            // Generate 16 random bits for both a and b
+            for (let i = 0; i < 16; i++) {
+                aliceBits.push(Math.random() < 0.5 ? 0 : 1);
+                aliceBases.push(Math.random() < 0.5 ? 0 : 1);
+            }
+
+            // Show the table
+            const table = document.getElementById('aliceTable');
+            const caption = document.getElementById('caption');
+            table.classList.add('visible');
+            caption.classList.add('visible');
+
+            // Populate table with animation
+            const tbody = document.getElementById('bitsTableBody');
+            tbody.innerHTML = '';
+
+            for (let i = 0; i < 16; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td class="bit-cell a-bit" id="a-${i}">?</td>
+                    <td class="bit-cell b-bit" id="b-${i}">?</td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            // Animate bits flipping into place
+            animateBitGeneration();
+        }
+
+        function animateBitGeneration() {
+            let currentIndex = 0;
+            
+            function flipNextBit() {
+                if (currentIndex >= 16) {
+                    // Show the basis rules button after bit generation is complete
+                    setTimeout(() => {
+                        document.getElementById('basisRulesBtn').style.display = 'inline-block';
+                    }, 500);
+                    return;
+                }
+
+                const aBitCell = document.getElementById(`a-${currentIndex}`);
+                const bBitCell = document.getElementById(`b-${currentIndex}`);
+
+                // Add flipping animation
+                aBitCell.classList.add('flipping');
+                bBitCell.classList.add('flipping');
+
+                // Simulate random flipping
+                let flipCount = 0;
+                const maxFlips = 5 + Math.floor(Math.random() * 5);
+
+                const flipInterval = setInterval(() => {
+                    aBitCell.textContent = Math.random() < 0.5 ? '0' : '1';
+                    bBitCell.textContent = Math.random() < 0.5 ? '0' : '1';
+                    flipCount++;
+
+                    if (flipCount >= maxFlips) {
+                        clearInterval(flipInterval);
+                        
+                        // Set final values
+                        aBitCell.textContent = aliceBits[currentIndex];
+                        bBitCell.textContent = aliceBases[currentIndex];
+                        
+                        // Remove flipping animation
+                        aBitCell.classList.remove('flipping');
+                        bBitCell.classList.remove('flipping');
+
+                        currentIndex++;
+                        
+                        // Move to next bit after a short delay
+                        setTimeout(flipNextBit, 200);
+                    }
+                }, 100);
+            }
+
+            flipNextBit();
+        }
+
+        // Old function removed - now using global window.showBasisRules
+
+        function animateBasisRules(callback) {
+            const rules = ['rule-00', 'rule-10', 'rule-01', 'rule-11'];
+            const photons = ['photon-0', 'photon-1', 'photon-plus', 'photon-minus'];
+            let currentRule = 0;
+
+            function highlightNextRule() {
+                if (currentRule >= rules.length) {
+                    // Reset after showing all rules
+                    setTimeout(() => {
+                        rules.forEach(ruleId => {
+                            document.getElementById(ruleId).classList.remove('highlighted');
+                        });
+                        photons.forEach(photonId => {
+                            document.getElementById(photonId).classList.remove('pulsing');
+                        });
+                        
+                        // Call callback if provided (to add photon state column)
+                        if (callback && typeof callback === 'function') {
+                            callback();
+                        }
+                    }, 1000);
+                    return;
+                }
+
+                // Clear previous highlights
+                rules.forEach(ruleId => {
+                    document.getElementById(ruleId).classList.remove('highlighted');
+                });
+                photons.forEach(photonId => {
+                    document.getElementById(photonId).classList.remove('pulsing');
+                });
+
+                // Highlight current rule and corresponding photon
+                document.getElementById(rules[currentRule]).classList.add('highlighted');
+                document.getElementById(photons[currentRule]).classList.add('pulsing');
+
+                currentRule++;
+                setTimeout(highlightNextRule, 1500);
+            }
+
+            // Start the animation after a brief delay
+            setTimeout(highlightNextRule, 500);
+        }
+    </script>
+</body>
+</html>

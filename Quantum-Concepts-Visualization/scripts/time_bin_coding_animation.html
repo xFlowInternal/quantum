@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time-Bin Coding Quantum Communication</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow-x: auto;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 30px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .animation-area {
+            position: relative;
+            height: 600px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .alice, .bob {
+            position: absolute;
+            width: 120px;
+            height: 150px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .alice {
+            left: 50px;
+            top: 200px;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .bob {
+            right: 50px;
+            top: 200px;
+            background: linear-gradient(45deg, #4ecdc4, #6ee6dd);
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+        }
+
+        .photon-source {
+            position: absolute;
+            left: 180px;
+            top: 260px;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #ffff00, #ffa500);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ffff00;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .fiber-channel {
+            position: absolute;
+            left: 220px;
+            right: 220px;
+            top: 270px;
+            height: 10px;
+            background: linear-gradient(90deg, #333, #666, #333);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .path-splitter {
+            position: absolute;
+            left: 400px;
+            top: 240px;
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(45deg, #666, #999);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .short-path {
+            position: absolute;
+            left: 460px;
+            top: 290px;
+            width: 450px;
+            height: 6px;
+            background: linear-gradient(90deg, #ff3366, #ff5588, #ff3366);
+            border-radius: 3px;
+            box-shadow: 0 0 8px rgba(6, 245, 58, 0.5);
+            
+        }
+
+        .long-path {
+            position: absolute;
+            left: 460px;
+            top: 250px;
+            width: 450px;
+            height: 6px;
+            background: linear-gradient(90deg, #0066ff, #0088ff, #0066ff);
+            border-radius: 3px;
+            box-shadow: 0 0 8px rgba(201, 18, 18, 0.5);
+        }
+
+        .path-combiner {
+            position: absolute;
+            right: 480px;
+            top: 240px;
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(45deg, #666, #999);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .path-label {
+            position: absolute;
+            font-size: 12px;
+            color: #ccc;
+            font-weight: bold;
+        }
+
+        .short-path-label {
+            left: 580px;
+            top: 305px;
+            color: #ff5588;
+        }
+
+        .long-path-label {
+            left: 580px;
+            top: 230px;
+            color: #0088ff;
+        }
+
+        .detectors {
+            position: absolute;
+            right: 300px;
+            top: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .detector {
+            width: 80px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #333, #555);
+            border: 2px solid #666;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .detector.active-early {
+            background: linear-gradient(45deg, #0066ff, #0088ff);
+            border-color: #0088ff;
+            box-shadow: 0 0 20px rgba(0, 102, 255, 0.8);
+        }
+
+        .detector.active-late {
+            background: linear-gradient(45deg, #ff3366, #ff5588);
+            border-color: #ff5588;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.8);
+        }
+
+        .final-fiber {
+            position: absolute;
+            right: 380px;
+            top: 270px;
+            width: 100px;
+            height: 10px;
+            background: linear-gradient(90deg, #333, #666, #333);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .time-detector {
+            position: absolute;
+            right: 50px;
+            top: 350px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            min-width: 250px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .time-detector h3 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+            font-size: 14px;
+        }
+
+        .time-reading {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .time-value {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .time-value.early {
+            color: #0088ff;
+        }
+
+        .time-value.late {
+            color: #ff5588;
+        }
+
+        .delta-t {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            color: #ffff00;
+            font-weight: bold;
+        }
+
+        .bit-times {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .bit-time-entry {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .bit-time-entry.early {
+            background: rgba(0, 102, 255, 0.2);
+            color: #0088ff;
+        }
+
+        .bit-time-entry.late {
+            background: rgba(255, 51, 102, 0.2);
+            color: #ff5588;
+        }
+
+        .photon {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+            z-index: 10;
+        }
+
+        .photon.early {
+            background: radial-gradient(circle, #0066ff, #0044cc);
+            color: #0066ff;
+        }
+
+        .photon.late {
+            background: radial-gradient(circle, #ff3366, #cc1144);
+            color: #ff3366;
+        }
+
+        .timeline {
+            position: absolute;
+            top: 100px;
+            left: 220px;
+            right: 220px;
+            height: 80px;
+            border: 1px solid #555;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+        }
+
+        .timeline-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: #00ffff;
+        }
+
+        .time-bins {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            height: 60px;
+            display: flex;
+        }
+
+        .time-bin {
+            flex: 1;
+            border-right: 1px dashed #666;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .time-bin:last-child {
+            border-right: none;
+        }
+
+        .time-bin-label {
+            position: absolute;
+            bottom: -20px;
+            font-size: 10px;
+            color: #aaa;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            min-width: 300px;
+        }
+
+        .bit-sequence {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            min-width: 200px;
+        }
+
+        .bit {
+            display: inline-block;
+            width: 25px;
+            height: 25px;
+            margin: 2px;
+            border-radius: 3px;
+            text-align: center;
+            line-height: 25px;
+            font-weight: bold;
+            font-size: 12px;
+            position: relative;
+        }
+
+        .bit.zero {
+            background: #0066ff;
+            color: white;
+        }
+
+        .bit.one {
+            background: #ff3366;
+            color: white;
+        }
+
+        .bit.current {
+            box-shadow: 0 0 10px #ffff00;
+            transform: scale(1.2);
+        }
+
+        .bit-time {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px;
+            color: #ccc;
+            white-space: nowrap;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #333, #555);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: linear-gradient(45deg, #555, #777);
+            transform: translateY(-2px);
+        }
+
+        .phase-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        .superposition-trail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .message-display {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Quantum Communication: Time-Bin Encoding</h1>
+        
+        <div class="animation-area">
+            <!-- Timeline -->
+            <div class="timeline">
+                <div class="timeline-label">Time Bins (Δt separation)</div>
+                <div class="time-bins" id="timeBins"></div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <h3>Current Status:</h3>
+                <div id="statusText">Ready to start transmission</div>
+                <div style="margin-top: 10px;">
+                    <strong>Character 'A' = 01000001</strong><br>
+                    <small>|0⟩ = Early photon (blue)<br>
+                    |1⟩ = Late photon (red)</small>
+                </div>
+            </div>
+
+            <!-- Bit Sequence Display -->
+            <div class="bit-sequence">
+                <h3>Bit Sequence:</h3>
+                <div id="bitDisplay"></div>
+                <div style="margin-top: 10px;">
+                    <strong>Received:</strong>
+                    <div id="receivedBits"></div>
+                </div>
+            </div>
+
+            <!-- Alice -->
+            <div class="alice">
+                <div>ALICE</div>
+                <div style="font-size: 12px;">Sender</div>
+            </div>
+
+            <!-- Photon Source -->
+            <div class="photon-source" id="photonSource"></div>
+
+            <!-- Path Splitter -->
+            <div class="path-splitter">
+                Beam<br>Splitter
+            </div>
+
+            <!-- Short Path (Early) -->
+            <div class="short-path"></div>
+            <div class="path-label short-path-label">Short Path (Early)</div>
+
+            <!-- Long Path (Late) -->
+            <div class="long-path"></div>
+            <div class="path-label long-path-label">Long Path (Late)</div>
+
+            <!-- Path Combiner -->
+            <div class="path-combiner">
+                Beam<br>Combiner
+            </div>
+
+            <!-- Initial Fiber Channel (Alice to Splitter) -->
+            <div class="fiber-channel" style="width: 180px; right: auto;"></div>
+
+            <!-- Bob -->
+            <div class="bob">
+                <div>BOB</div>
+                <div style="font-size: 12px;">Receiver</div>
+            </div>
+
+            <!-- Detectors -->
+            <div class="detectors">
+                <div class="detector" id="timeDetector">
+                    Time Bin<br>Detector
+                </div>
+            </div>
+
+            <!-- Final Fiber (Combiner to Detector) -->
+            <div class="final-fiber"></div>
+
+            <!-- Time Detector Display -->
+            <div class="time-detector">
+                <h3>⏱️ Time Detection</h3>
+                <div class="time-reading">
+                    <span>Current Early:</span>
+                    <span class="time-value early" id="earlyTime">-- ns</span>
+                </div>
+                <div class="time-reading">
+                    <span>Current Late:</span>
+                    <span class="time-value late" id="lateTime">-- ns</span>
+                </div>
+                <div class="delta-t">
+                    Δt = <span id="deltaT">-- ns</span>
+                </div>
+                <div class="bit-times">
+                    <strong style="color: #ccc; font-size: 11px;">Bit Arrival Times:</strong>
+                    <div id="bitTimesList"></div>
+                </div>
+            </div>
+
+            <!-- Message Display -->
+            <div class="message-display" id="messageDisplay"></div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn" onclick="startAnimation()">Start Transmission</button>
+                <button class="btn" onclick="resetAnimation()">Reset</button>
+                <button class="btn" onclick="togglePause()">Pause/Resume</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Animation state
+        let animationState = {
+            isRunning: false,
+            isPaused: false,
+            currentBit: 0,
+            photons: [],
+            receivedBits: [],
+            bitSequence: [0, 1, 0, 0, 0, 0, 0, 1], // ASCII 'A' = 65 = 01000001
+            transmissionStartTime: 0,
+            timeReadings: {
+                early: [],
+                late: []
+            },
+            bitArrivalTimes: [] // Store individual bit arrival times
+        };
+
+        // Initialize the display
+        function initializeDisplay() {
+            // Create time bins
+            const timeBins = document.getElementById('timeBins');
+            timeBins.innerHTML = '';
+            for (let i = 0; i < 8; i++) {
+                const bin = document.createElement('div');
+                bin.className = 'time-bin';
+                bin.innerHTML = `<div class="time-bin-label">t${i}</div>`;
+                timeBins.appendChild(bin);
+            }
+
+            // Display bit sequence
+            const bitDisplay = document.getElementById('bitDisplay');
+            bitDisplay.innerHTML = '';
+            animationState.bitSequence.forEach((bit, index) => {
+                const bitElement = document.createElement('div');
+                bitElement.className = `bit ${bit === 0 ? 'zero' : 'one'}`;
+                bitElement.textContent = bit;
+                bitElement.id = `bit-${index}`;
+                bitDisplay.appendChild(bitElement);
+            });
+
+            // Clear received bits
+            document.getElementById('receivedBits').innerHTML = '';
+            document.getElementById('messageDisplay').textContent = '';
+        }
+
+        // Create a photon
+        function createPhoton(bitValue, startTime) {
+            const photon = document.createElement('div');
+            photon.className = `photon ${bitValue === 0 ? 'early' : 'late'}`;
+            
+            // Position at photon source
+            photon.style.left = '220px';
+            photon.style.top = '270px';
+            
+            document.querySelector('.animation-area').appendChild(photon);
+
+            const photonData = {
+                element: photon,
+                bitValue: bitValue,
+                startTime: startTime,
+                position: 220,
+                detected: false,
+                timeBin: bitValue === 0 ? 'early' : 'late',
+                phase: 'initial', // initial, splitter, path, combiner, detector
+                pathType: bitValue === 0 ? 'short' : 'long'
+            };
+
+            animationState.photons.push(photonData);
+            return photonData;
+        }
+
+        // Animate photon movement
+        function animatePhotons() {
+            const splitterX = 400; // Beam splitter position
+            const combinerX = window.innerWidth - 340;
+            const detectorX = window.innerWidth - 180;
+            
+            animationState.photons.forEach((photon, index) => {
+                if (photon.detected) return;
+
+                const elapsed = Date.now() - photon.startTime;
+                const baseSpeed = 0.2; // pixels per ms (slower for better visibility)
+                
+                switch (photon.phase) {
+                    case 'initial':
+                        // Move from source to splitter
+                        photon.position = 220 + (elapsed * baseSpeed);
+                        photon.element.style.left = photon.position + 'px';
+                        photon.element.style.top = '270px';
+                        
+                        if (photon.position >= splitterX) {
+                            photon.phase = 'splitter';
+                            photon.phaseStartTime = Date.now();
+                        }
+                        break;
+                        
+                    case 'splitter':
+                        // Brief pause at splitter, then move to appropriate path
+                        const splitterElapsed = Date.now() - photon.phaseStartTime;
+                        if (splitterElapsed > 300) { // 300ms pause at splitter
+                            photon.phase = 'path';
+                            photon.phaseStartTime = Date.now();
+                            // Move to path starting position
+                            photon.position = 460;
+                            photon.element.style.left = photon.position + 'px';
+                            photon.element.style.top = photon.pathType === 'short' ? '253px' : '293px';
+                        }
+                        break;
+                        
+                    case 'path':
+                        // Move along the path to combiner
+                        const pathElapsed = Date.now() - photon.phaseStartTime;
+                        const pathLength = photon.pathType === 'short' ? 350 : 400;
+                        // Different speeds for different path lengths to create time difference
+                        const pathSpeed = photon.pathType === 'short' ? baseSpeed * 1.2 : baseSpeed * 0.8;
+                        
+                        photon.position = 460 + (pathElapsed * pathSpeed);
+                        photon.element.style.left = photon.position + 'px';
+                        
+                        if (photon.position >= 460 + pathLength) {
+                            photon.phase = 'combiner';
+                            photon.phaseStartTime = Date.now();
+                            // Move to combiner position and align to center
+                            photon.element.style.top = '270px';
+                            photon.position = combinerX + 30; // Center of combiner
+                            photon.element.style.left = photon.position + 'px';
+                        }
+                        break;
+                        
+                    case 'combiner':
+                        // Brief pause at combiner, then move to detector
+                        const combinerElapsed = Date.now() - photon.phaseStartTime;
+                        if (combinerElapsed > 200) { // 200ms pause at combiner
+                            photon.phase = 'detector';
+                            photon.phaseStartTime = Date.now();
+                        }
+                        break;
+                        
+                    case 'detector':
+                        // Move to single detector
+                        const detectorElapsed = Date.now() - photon.phaseStartTime;
+                        photon.position = (combinerX + 30) + (detectorElapsed * baseSpeed);
+                        photon.element.style.left = photon.position + 'px';
+                        
+                        if (photon.position >= detectorX) {
+                            detectPhoton(photon, index);
+                        }
+                        break;
+                }
+
+                // Create superposition trail effect
+                if (Math.random() < 0.15 && photon.phase === 'path') {
+                    createSuperpositionTrail(photon);
+                }
+            });
+        }
+
+        // Create superposition trail effect
+        function createSuperpositionTrail(photon) {
+            const trail = document.createElement('div');
+            trail.className = `superposition-trail ${photon.bitValue === 0 ? 'early' : 'late'}`;
+            trail.style.background = photon.bitValue === 0 ? '#0066ff' : '#ff3366';
+            trail.style.left = (photon.position - 10 + Math.random() * 20) + 'px';
+            trail.style.top = (270 + Math.random() * 20 - 10) + 'px';
+            
+            document.querySelector('.animation-area').appendChild(trail);
+            
+            setTimeout(() => {
+                if (trail.parentNode) {
+                    trail.parentNode.removeChild(trail);
+                }
+            }, 500);
+        }
+
+        // Detect photon at Bob's end
+        function detectPhoton(photon, index) {
+            photon.detected = true;
+            
+            // Calculate arrival time (relative to transmission start)
+            const arrivalTime = Date.now() - animationState.transmissionStartTime;
+            const arrivalTimeNs = Math.round(arrivalTime * 100); // Convert to nanoseconds (simulated)
+            
+            // Store individual bit arrival time
+            const bitInfo = {
+                bitIndex: animationState.receivedBits.length,
+                bitValue: photon.bitValue,
+                arrivalTime: arrivalTimeNs,
+                type: photon.bitValue === 0 ? 'Early' : 'Late'
+            };
+            animationState.bitArrivalTimes.push(bitInfo);
+            
+            // Update bit time list
+            updateBitTimesList();
+            
+            // Store time reading for current/latest detection
+            if (photon.bitValue === 0) {
+                animationState.timeReadings.early.push(arrivalTimeNs);
+                document.getElementById('earlyTime').textContent = arrivalTimeNs + ' ns';
+            } else {
+                animationState.timeReadings.late.push(arrivalTimeNs);
+                document.getElementById('lateTime').textContent = arrivalTimeNs + ' ns';
+            }
+            
+            // Calculate and display Δt if we have both readings
+            if (animationState.timeReadings.early.length > 0 && animationState.timeReadings.late.length > 0) {
+                const latestEarly = animationState.timeReadings.early[animationState.timeReadings.early.length - 1];
+                const latestLate = animationState.timeReadings.late[animationState.timeReadings.late.length - 1];
+                const deltaT = Math.abs(latestLate - latestEarly);
+                document.getElementById('deltaT').textContent = deltaT + ' ns';
+            }
+            
+            // Animate single detector with appropriate color
+            const detector = document.getElementById('timeDetector');
+            
+            // Remove previous active classes
+            detector.classList.remove('active-early', 'active-late');
+            
+            // Add appropriate class based on photon type
+            if (photon.bitValue === 0) {
+                detector.classList.add('active-early');
+                detector.innerHTML = 'Early Photon<br>Detected!<br>|0⟩';
+            } else {
+                detector.classList.add('active-late');
+                detector.innerHTML = 'Late Photon<br>Detected!<br>|1⟩';
+            }
+            
+            // Reset detector after animation
+            setTimeout(() => {
+                detector.classList.remove('active-early', 'active-late');
+                detector.innerHTML = 'Time Bin<br>Detector';
+            }, 1000);
+
+            // Add to received bits
+            animationState.receivedBits.push(photon.bitValue);
+            updateReceivedBitsDisplay();
+
+            // Remove photon element
+            setTimeout(() => {
+                if (photon.element.parentNode) {
+                    photon.element.parentNode.removeChild(photon.element);
+                }
+            }, 500);
+
+            // Check if all bits received
+            if (animationState.receivedBits.length === animationState.bitSequence.length) {
+                setTimeout(() => {
+                    const receivedChar = String.fromCharCode(
+                        parseInt(animationState.receivedBits.join(''), 2)
+                    );
+                    document.getElementById('messageDisplay').textContent = 
+                        `Message Received: "${receivedChar}"`;
+                    document.getElementById('statusText').textContent = 
+                        'Transmission Complete!';
+                }, 1000);
+            }
+        }
+
+        // Update received bits display
+        function updateReceivedBitsDisplay() {
+            const receivedDisplay = document.getElementById('receivedBits');
+            receivedDisplay.innerHTML = '';
+            
+            animationState.receivedBits.forEach((bit, index) => {
+                const bitElement = document.createElement('div');
+                bitElement.className = `bit ${bit === 0 ? 'zero' : 'one'}`;
+                bitElement.textContent = bit;
+                
+                // Add time information if available
+                if (animationState.bitArrivalTimes[index]) {
+                    const timeSpan = document.createElement('div');
+                    timeSpan.className = 'bit-time';
+                    timeSpan.textContent = animationState.bitArrivalTimes[index].arrivalTime + 'ns';
+                    bitElement.appendChild(timeSpan);
+                }
+                
+                receivedDisplay.appendChild(bitElement);
+            });
+        }
+
+        // Update bit times list
+        function updateBitTimesList() {
+            const bitTimesList = document.getElementById('bitTimesList');
+            bitTimesList.innerHTML = '';
+            
+            animationState.bitArrivalTimes.forEach((bitInfo, index) => {
+                const entry = document.createElement('div');
+                entry.className = `bit-time-entry ${bitInfo.bitValue === 0 ? 'early' : 'late'}`;
+                entry.innerHTML = `
+                    <span>Bit ${bitInfo.bitIndex + 1} (${bitInfo.bitValue})</span>
+                    <span>${bitInfo.arrivalTime}ns (${bitInfo.type})</span>
+                `;
+                bitTimesList.appendChild(entry);
+            });
+        }
+
+        // Send next photon
+        function sendNextPhoton() {
+            if (animationState.currentBit >= animationState.bitSequence.length) {
+                return;
+            }
+
+            // Highlight current bit
+            document.querySelectorAll('.bit').forEach(b => b.classList.remove('current'));
+            document.getElementById(`bit-${animationState.currentBit}`).classList.add('current');
+
+            const bitValue = animationState.bitSequence[animationState.currentBit];
+            createPhoton(bitValue, Date.now());
+
+            // Update status
+            document.getElementById('statusText').textContent = 
+                `Sending bit ${animationState.currentBit + 1}/8: ${bitValue} (${bitValue === 0 ? 'Early' : 'Late'} photon)`;
+
+            animationState.currentBit++;
+
+            // Schedule next photon
+            if (animationState.currentBit < animationState.bitSequence.length) {
+                setTimeout(() => {
+                    if (animationState.isRunning && !animationState.isPaused) {
+                        sendNextPhoton();
+                    }
+                }, 1000); // 1 second between photons
+            }
+        }
+
+        // Animation loop
+        function animationLoop() {
+            if (animationState.isRunning && !animationState.isPaused) {
+                animatePhotons();
+            }
+            requestAnimationFrame(animationLoop);
+        }
+
+        // Control functions
+        function startAnimation() {
+            if (animationState.isRunning) return;
+            
+            resetAnimation();
+            animationState.isRunning = true;
+            animationState.isPaused = false;
+            animationState.transmissionStartTime = Date.now();
+            
+            document.getElementById('statusText').textContent = 'Starting transmission...';
+            
+            setTimeout(() => {
+                sendNextPhoton();
+            }, 500);
+        }
+
+        function resetAnimation() {
+            animationState.isRunning = false;
+            animationState.isPaused = false;
+            animationState.currentBit = 0;
+            animationState.receivedBits = [];
+            animationState.transmissionStartTime = 0;
+            animationState.timeReadings = { early: [], late: [] };
+            animationState.bitArrivalTimes = [];
+            
+            // Reset time display
+            document.getElementById('earlyTime').textContent = '-- ns';
+            document.getElementById('lateTime').textContent = '-- ns';
+            document.getElementById('deltaT').textContent = '-- ns';
+            document.getElementById('bitTimesList').innerHTML = '';
+            
+            // Clear photons
+            animationState.photons.forEach(photon => {
+                if (photon.element.parentNode) {
+                    photon.element.parentNode.removeChild(photon.element);
+                }
+            });
+            animationState.photons = [];
+            
+            // Clear superposition trails
+            document.querySelectorAll('.superposition-trail').forEach(trail => {
+                if (trail.parentNode) {
+                    trail.parentNode.removeChild(trail);
+                }
+            });
+            
+            initializeDisplay();
+            document.getElementById('statusText').textContent = 'Ready to start transmission';
+        }
+
+        function togglePause() {
+            if (animationState.isRunning) {
+                animationState.isPaused = !animationState.isPaused;
+                document.getElementById('statusText').textContent = 
+                    animationState.isPaused ? 'Transmission Paused' : 'Transmission Resumed';
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initializeDisplay();
+            animationLoop();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Adjust photon positions if needed
+            animationState.photons.forEach(photon => {
+                if (!photon.detected) {
+                    // Recalculate position based on new window size
+                    const fiberStart = 220;
+                    const fiberEnd = window.innerWidth - 280;
+                    const progress = (photon.position - fiberStart) / (fiberEnd - fiberStart);
+                    photon.position = fiberStart + ((window.innerWidth - 500) * progress);
+                    photon.element.style.left = photon.position + 'px';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

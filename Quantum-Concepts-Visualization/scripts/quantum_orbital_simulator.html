@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Orbital Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050810;
+    --panel: #090e1a;
+    --border: #1a2540;
+    --accent: #00d4ff;
+    --accent2: #7b4fff;
+    --accent3: #ff6b6b;
+    --text: #c8d8f0;
+    --text-dim: #4a6080;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(123,79,255,0.3);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* Starfield */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 50%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 35%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 55%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    pointer-events: none; z-index: 0;
+  }
+
+  #app {
+    display: flex;
+    height: 100vh;
+    position: relative; z-index: 1;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px;
+    gap: 20px;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  #sidebar::after {
+    content: '';
+    position: absolute;
+    top: 0; right: -1px; width: 1px; height: 100%;
+    background: linear-gradient(180deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo span { color: var(--text-dim); }
+
+  /* Orbital label */
+  #orbital-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+
+  #orbital-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    margin-top: 4px;
+  }
+
+  /* Section */
+  .section { display: flex; flex-direction: column; gap: 12px; }
+
+  .section-title {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  /* Quantum number definitions */
+  .qn-definitions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0,212,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 10px;
+    margin-bottom: 4px;
+  }
+
+  .qn-def {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .qn-sym {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    font-style: italic;
+    color: var(--accent);
+    min-width: 22px;
+    padding-top: 1px;
+  }
+
+  .qn-def-text {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .qn-def-text strong {
+    color: var(--text);
+    font-size: 10px;
+  }
+
+  /* Quantum number row */
+  .qn-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .qn-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .qn-label strong {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    font-style: italic;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .qn-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 4px 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  .qn-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .qn-btn.active {
+    background: rgba(0,212,255,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 8px rgba(0,212,255,0.2);
+  }
+
+  /* Spin */
+  .spin-group { display: flex; gap: 8px; }
+
+  .spin-btn {
+    flex: 1;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+    line-height: 1;
+  }
+
+  .spin-btn.active-up { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.08); box-shadow: var(--glow); }
+  .spin-btn.active-down { border-color: var(--accent2); color: var(--accent2); background: rgba(123,79,255,0.08); box-shadow: var(--glow2); }
+
+  /* Slider */
+  .slider-row { display: flex; flex-direction: column; gap: 6px; }
+
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .slider-label span { color: var(--text); }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  /* Color scheme */
+  .color-row { display: flex; gap: 6px; }
+  .color-btn {
+    flex: 1; height: 28px; border: 1px solid var(--border);
+    cursor: pointer; border-radius: 2px; transition: all 0.15s;
+    position: relative;
+  }
+  .color-btn.active { border-color: white; transform: scale(1.05); }
+  .color-btn.cyan { background: linear-gradient(135deg,#001a2e,#00d4ff); }
+  .color-btn.violet { background: linear-gradient(135deg,#1a001a,#7b4fff); }
+  .color-btn.fire { background: linear-gradient(135deg,#1a0500,#ff6b2b); }
+  .color-btn.plasma { background: linear-gradient(135deg,#001a0a,#00ff88); }
+
+  /* Action buttons */
+  .action-btn {
+    width: 100%;
+    padding: 10px;
+    background: rgba(0,212,255,0.06);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .action-btn:hover {
+    background: rgba(0,212,255,0.15);
+    box-shadow: var(--glow);
+  }
+
+  .action-btn.secondary {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+
+  .action-btn.secondary:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(123,79,255,0.08);
+  }
+
+  .action-btn.danger {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: transparent;
+  }
+
+  .action-btn.danger:hover { background: rgba(255,107,107,0.08); }
+
+  /* Info box */
+  .info-box {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    padding: 10px 12px;
+    font-size: 10px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .info-box strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 11px; }
+
+  /* Node counts */
+  .node-row {
+    display: flex; gap: 8px;
+  }
+
+  .node-chip {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    text-align: center;
+  }
+
+  .node-chip .val {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent2);
+  }
+
+  .node-chip .lbl {
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    margin-top: 2px;
+  }
+
+  /* ── CANVAS AREA ── */
+  #canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #canvas {
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* HUD overlays */
+  .hud {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .hud-tl {
+    top: 24px; left: 24px;
+    font-size: 10px; color: var(--text-dim);
+    line-height: 2;
+    letter-spacing: 0.1em;
+  }
+
+  .hud-tl .highlight { color: var(--accent); }
+
+  .hud-tr {
+    top: 24px; right: 24px;
+    text-align: right;
+    font-size: 10px; color: var(--text-dim);
+    letter-spacing: 0.1em;
+    line-height: 2;
+  }
+
+  .hud-br {
+    bottom: 24px; right: 24px;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+    text-align: right;
+  }
+
+  .hud-bl {
+    bottom: 24px; left: 24px;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+
+  #spin-indicator {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 64px;
+    color: rgba(0,212,255,0.08);
+    font-weight: 800;
+    user-select: none;
+    letter-spacing: -4px;
+  }
+
+  #status-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 28px;
+    background: rgba(9,14,26,0.9);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 24px;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    pointer-events: none;
+  }
+
+  #status-bar .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 6px var(--accent);
+    display: inline-block; margin-right: 6px;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Loading overlay */
+  #loading {
+    position: absolute; inset: 0;
+    background: rgba(5,8,16,0.85);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 10;
+  }
+
+  #loading.show { opacity: 1; pointer-events: all; }
+
+  .loading-bar-wrap {
+    width: 200px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .loading-bar {
+    height: 100%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: loadbar 0.8s ease-in-out;
+  }
+
+  @keyframes loadbar { from { width: 0; } to { width: 100%; } }
+
+  /* Tooltip */
+  #tooltip {
+    position: absolute;
+    bottom: 60px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(9,14,26,0.95);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  #tooltip.show { opacity: 1; }
+
+  /* Crosshair */
+  #canvas-area::before, #canvas-area::after {
+    content: '';
+    position: absolute;
+    background: rgba(0,212,255,0.05);
+    pointer-events: none;
+  }
+
+  /* Scrollbar */
+  #sidebar::-webkit-scrollbar { width: 3px; }
+  #sidebar::-webkit-scrollbar-track { background: transparent; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 1px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="logo">Quantum<span>OS</span> // Orbital Simulator</div>
+
+    <div>
+      <div id="orbital-label">1s</div>
+      <div id="orbital-desc">n=1 · l=0 · mₗ=0 · mₛ=↑ &nbsp;|&nbsp; SPHERICAL</div>
+    </div>
+
+    <!-- Quantum Numbers -->
+    <div class="section">
+      <div class="section-title">Quantum Numbers</div>
+
+      <div class="qn-definitions">
+        <div class="qn-def"><span class="qn-sym">n</span><span class="qn-def-text"><strong>Principal</strong> — Determines the energy level and size of the orbital. Higher n = more energy, larger orbital, farther from nucleus.</span></div>
+        <div class="qn-def"><span class="qn-sym">l</span><span class="qn-def-text"><strong>Azimuthal</strong> — Determines the shape of the orbital and the number of angular nodes. s=sphere, p=dumbbell, d=four-lobed, f=complex. Range: 0 to n−1.</span></div>
+        <div class="qn-def"><span class="qn-sym">mₗ</span><span class="qn-def-text"><strong>Magnetic</strong> — Determines the spatial orientation of an orbital in 3-D space. It tells you how the orbital is rotated relative to x, y, z axes. Range: −l to +l. Does not affect shape, only direction.</span></div>
+        <div class="qn-def"><span class="qn-sym">mₛ</span><span class="qn-def-text"><strong>Spin</strong> — Intrinsic angular momentum of the electron. ↑ = +½, ↓ = −½. Does not affect orbital shape.</span></div>
+      </div>
+
+      <div class="qn-row">
+        <div class="qn-label"><strong>n</strong> Principal</div>
+        <div class="btn-group" id="n-btns">
+          <button class="qn-btn active" data-val="1">1</button>
+          <button class="qn-btn" data-val="2">2</button>
+          <button class="qn-btn" data-val="3">3</button>
+          <button class="qn-btn" data-val="4">4</button>
+        </div>
+      </div>
+
+      <div class="qn-row">
+        <div class="qn-label"><strong>l</strong> Azimuthal</div>
+        <div class="btn-group" id="l-btns">
+          <button class="qn-btn active" data-val="0">s</button>
+        </div>
+      </div>
+
+      <div class="qn-row">
+        <div class="qn-label"><strong>mₗ</strong> Magnetic</div>
+        <div class="btn-group" id="ml-btns">
+          <button class="qn-btn active" data-val="0">0</button>
+        </div>
+      </div>
+
+      <div class="qn-row">
+        <div class="qn-label"><strong>mₛ</strong> Spin</div>
+        <div class="spin-group">
+          <button class="spin-btn active-up" id="spin-up">↑</button>
+          <button class="spin-btn" id="spin-down">↓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nodes info -->
+    <div class="section">
+      <div class="section-title">Node Structure</div>
+      <div class="node-row">
+        <div class="node-chip">
+          <div class="val" id="radial-nodes">0</div>
+          <div class="lbl">RADIAL</div>
+        </div>
+        <div class="node-chip">
+          <div class="val" id="angular-nodes">0</div>
+          <div class="lbl">ANGULAR</div>
+        </div>
+        <div class="node-chip">
+          <div class="val" id="total-nodes">0</div>
+          <div class="lbl">TOTAL</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Point density -->
+    <div class="section">
+      <div class="section-title">Render Quality</div>
+      <div class="slider-row">
+        <div class="slider-label">Point Count <span id="density-val">30k</span></div>
+        <input type="range" id="density" min="1" max="10" value="3" step="1">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">Point Size <span id="size-val">2.0</span></div>
+        <input type="range" id="point-size" min="1" max="10" value="4" step="1">
+      </div>
+    </div>
+
+    <!-- Color scheme -->
+    <div class="section">
+      <div class="section-title">Color Scheme</div>
+      <div class="color-row">
+        <button class="color-btn cyan active" data-scheme="cyan" title="Cyan"></button>
+        <button class="color-btn violet" data-scheme="violet" title="Violet"></button>
+        <button class="color-btn fire" data-scheme="fire" title="Fire"></button>
+        <button class="color-btn plasma" data-scheme="plasma" title="Plasma"></button>
+      </div>
+    </div>
+
+    <!-- Info box -->
+    <div class="info-box" id="info-box">
+      <strong>1s Orbital</strong>
+      Ground state. Spherical symmetry. Single electron closest to nucleus.
+    </div>
+
+    <!-- Actions -->
+    <div class="section">
+      <div class="section-title">Controls</div>
+      <button class="action-btn" id="btn-generate">⟳ Generate Orbital</button>
+      <button class="action-btn secondary" id="btn-animate">▶ Animate n=1→4 (all)</button>
+      <button class="action-btn secondary" id="btn-rotate">⟲ Auto Rotate</button>
+      <button class="action-btn danger" id="btn-clear">✕ Clear</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-area">
+    <canvas id="canvas"></canvas>
+
+    <!-- HUD -->
+    <div class="hud hud-tl">
+      <div>ψ<sub>n,l,m</sub>(r,θ,φ) = R<sub>n,l</sub>(r) · Y<sub>l</sub><sup>m</sup>(θ,φ)</div>
+      <div>POINTS: <span class="highlight" id="hud-points">0</span></div>
+      <div>ACCEPTED: <span class="highlight" id="hud-accepted">0%</span></div>
+    </div>
+
+    <div class="hud hud-tr" id="hud-tr">
+      <div id="hud-orbital">n=1 l=0 mₗ=0</div>
+      <div id="hud-type">s-orbital</div>
+      <div id="hud-shape">spherical</div>
+    </div>
+
+    <div class="hud hud-bl" id="hud-bl">
+      Drag to rotate &nbsp;·&nbsp; Scroll to zoom
+    </div>
+
+    <div class="hud hud-br" id="hud-br">
+      <div id="hud-energy">E = −13.6 eV</div>
+      <div>r<sub>max</sub> = a₀</div>
+    </div>
+
+    <div id="spin-indicator">↑</div>
+
+    <div id="status-bar">
+      <span><span class="dot"></span>SIMULATION ACTIVE</span>
+      <span id="status-text">Ready</span>
+    </div>
+
+    <div id="loading">
+      <div>Computing |ψ|²</div>
+      <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+    </div>
+
+    <div id="tooltip"></div>
+  </div>
+</div>
+
+<script>
+// ── THREE.JS INLINE (minimal, no CDN needed) ──
+// We'll implement our own WebGL renderer to keep it self-contained.
+
+const canvas = document.getElementById('canvas');
+const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+let W, H;
+function resize() {
+  W = canvas.clientWidth;
+  H = canvas.clientHeight;
+  canvas.width = W;
+  canvas.height = H;
+  if (gl) gl.viewport(0, 0, W, H);
+}
+resize();
+window.addEventListener('resize', () => { resize(); render(); });
+
+// ── SHADER PROGRAMS ──
+const vertSrc = `
+  attribute vec3 a_pos;
+  attribute float a_bright;
+  uniform mat4 u_mvp;
+  uniform float u_size;
+  varying float v_bright;
+  void main() {
+    gl_Position = u_mvp * vec4(a_pos, 1.0);
+    gl_PointSize = u_size * (1.0 + a_bright * 0.5);
+    v_bright = a_bright;
+  }
+`;
+
+const fragSrc = `
+  precision mediump float;
+  varying float v_bright;
+  uniform vec3 u_color1;
+  uniform vec3 u_color2;
+  void main() {
+    vec2 c = gl_PointCoord - 0.5;
+    float r = dot(c, c);
+    if (r > 0.25) discard;
+    float alpha = (1.0 - r * 4.0) * v_bright;
+    vec3 col = mix(u_color2, u_color1, v_bright);
+    gl_FragColor = vec4(col, alpha * 0.8);
+  }
+`;
+
+function createShader(type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  return sh;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, createShader(gl.VERTEX_SHADER, vertSrc));
+gl.attachShader(prog, createShader(gl.FRAGMENT_SHADER, fragSrc));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+const aBright = gl.getAttribLocation(prog, 'a_bright');
+const uMVP = gl.getUniformLocation(prog, 'u_mvp');
+const uSize = gl.getUniformLocation(prog, 'u_size');
+const uColor1 = gl.getUniformLocation(prog, 'u_color1');
+const uColor2 = gl.getUniformLocation(prog, 'u_color2');
+
+const posBuf = gl.createBuffer();
+const briBuf = gl.createBuffer();
+
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+gl.clearColor(0.02, 0.032, 0.063, 1.0);
+
+// ── MATRIX MATH ──
+function mat4() { return new Float32Array(16); }
+
+function identity(m) {
+  m.fill(0);
+  m[0] = m[5] = m[10] = m[15] = 1;
+  return m;
+}
+
+function perspective(fov, aspect, near, far, m) {
+  m = m || mat4();
+  const f = 1 / Math.tan(fov / 2);
+  m.fill(0);
+  m[0] = f / aspect;
+  m[5] = f;
+  m[10] = (far + near) / (near - far);
+  m[11] = -1;
+  m[14] = (2 * far * near) / (near - far);
+  return m;
+}
+
+function rotX(a, m) {
+  m = m || mat4(); identity(m);
+  m[5] = Math.cos(a); m[6] = Math.sin(a);
+  m[9] = -Math.sin(a); m[10] = Math.cos(a);
+  return m;
+}
+
+function rotY(a, m) {
+  m = m || mat4(); identity(m);
+  m[0] = Math.cos(a); m[2] = -Math.sin(a);
+  m[8] = Math.sin(a); m[10] = Math.cos(a);
+  return m;
+}
+
+function translate(tx, ty, tz, m) {
+  m = m || mat4(); identity(m);
+  m[12] = tx; m[13] = ty; m[14] = tz;
+  return m;
+}
+
+function mul(a, b, out) {
+  out = out || mat4();
+  for (let r = 0; r < 4; r++)
+    for (let c = 0; c < 4; c++) {
+      let s = 0;
+      for (let k = 0; k < 4; k++) s += a[r + k * 4] * b[k + c * 4];
+      out[r + c * 4] = s;
+    }
+  return out;
+}
+
+// ── QUANTUM MATH ──
+function factorial(n) {
+  if (n <= 1) return 1;
+  let r = 1;
+  for (let i = 2; i <= n; i++) r *= i;
+  return r;
+}
+
+function assocLaguerre(n, alpha, x) {
+  if (n === 0) return 1;
+  if (n === 1) return 1 + alpha - x;
+  let L0 = 1, L1 = 1 + alpha - x, Ln;
+  for (let k = 1; k < n; k++) {
+    Ln = ((2 * k + 1 + alpha - x) * L1 - (k + alpha) * L0) / (k + 1);
+    L0 = L1; L1 = Ln;
+  }
+  return L1;
+}
+
+function assocLegendre(l, m, x) {
+  const absm = Math.abs(m);
+  let Pmm = 1;
+  if (absm > 0) {
+    const s = Math.sqrt(1 - x * x);
+    let fact = 1;
+    for (let i = 1; i <= absm; i++) {
+      Pmm *= -fact * s;
+      fact += 2;
+    }
+  }
+  if (l === absm) return Pmm;
+  let Pm1 = x * (2 * absm + 1) * Pmm;
+  if (l === absm + 1) return Pm1;
+  let Pll = 0;
+  for (let ll = absm + 2; ll <= l; ll++) {
+    Pll = ((2 * ll - 1) * x * Pm1 - (ll + absm - 1) * Pmm) / (ll - absm);
+    Pmm = Pm1; Pm1 = Pll;
+  }
+  return Pll;
+}
+
+function radialWave(n, l, r) {
+  const a0 = 1;
+  const rho = (2 * r) / (n * a0);
+  const norm = Math.sqrt(
+    Math.pow(2 / (n * a0), 3) *
+    factorial(n - l - 1) /
+    (2 * n * Math.pow(factorial(n + l), 3))
+  );
+  const laguerre = assocLaguerre(n - l - 1, 2 * l + 1, rho);
+  return norm * Math.exp(-rho / 2) * Math.pow(rho, l) * laguerre;
+}
+
+function sphericalHarmonic(l, m, theta, phi) {
+  const absm = Math.abs(m);
+  const norm = Math.sqrt(
+    (2 * l + 1) / (4 * Math.PI) *
+    factorial(l - absm) / factorial(l + absm)
+  );
+  const leg = assocLegendre(l, absm, Math.cos(theta));
+  if (m === 0) return norm * leg;
+  const f = Math.SQRT2 * norm * leg;
+  if (m > 0) return f * Math.cos(absm * phi);
+  return f * Math.sin(absm * phi);
+}
+
+function wavefunctionSq(n, l, m, r, theta, phi) {
+  const R = radialWave(n, l, r);
+  const Y = sphericalHarmonic(l, m, theta, phi);
+  return R * R * Y * Y;
+}
+
+// ── STATE ──
+let state = { n: 1, l: 0, ml: 0, ms: 1, scheme: 'cyan' };
+let points = { pos: new Float32Array(0), bri: new Float32Array(0), count: 0 };
+let autoRotate = false, rotAngle = 0;
+let rotX_ = 0.4, rotY_ = 0;
+let zoom = 4.5;
+let drag = false, lastX = 0, lastY = 0;
+let ptSize = 2.0;
+let colorSchemes = {
+  cyan:   { c1: [0, 0.83, 1], c2: [0, 0.3, 0.6] },
+  violet: { c1: [0.48, 0.31, 1], c2: [0.2, 0.0, 0.5] },
+  fire:   { c1: [1, 0.42, 0.17], c2: [0.6, 0.05, 0.0] },
+  plasma: { c1: [0.0, 1, 0.53], c2: [0.0, 0.4, 0.2] }
+};
+
+// ── GENERATE ORBITAL ──
+function generateOrbital(nSamples) {
+  const { n, l, ml } = state;
+  showLoading(true);
+
+  return new Promise(resolve => {
+  setTimeout(() => {
+    const maxR = (n * n * (3 * n - l) * 1.5) || 20;
+    const scale = 1 / (n * 1.5);
+
+    const accepted = [];
+    let tries = 0, totalSamples = nSamples * 10000;
+
+    // Find max P for normalization (sample grid)
+    let maxP = 0;
+    for (let i = 0; i < 2000; i++) {
+      const r = Math.random() * maxR;
+      const theta = Math.acos(2 * Math.random() - 1);
+      const phi = Math.random() * 2 * Math.PI;
+      const P = wavefunctionSq(n, l, ml, r, theta, phi) * r * r * Math.sin(theta);
+      if (P > maxP) maxP = P;
+    }
+    if (maxP === 0) maxP = 1;
+
+    // Rejection sampling
+    let attempts = 0, acc = 0;
+    const maxAttempts = totalSamples * 3;
+
+    while (acc < totalSamples && attempts < maxAttempts) {
+      attempts++;
+      const r = Math.random() * maxR;
+      const theta = Math.acos(2 * Math.random() - 1);
+      const phi = Math.random() * 2 * Math.PI;
+
+      const P = wavefunctionSq(n, l, ml, r, theta, phi) * r * r * Math.sin(theta);
+      if (Math.random() < P / maxP) {
+        const x = r * Math.sin(theta) * Math.cos(phi);
+        const y = r * Math.sin(theta) * Math.sin(phi);
+        const z = r * Math.cos(theta);
+        const bright = Math.min(1, P / maxP);
+        accepted.push(x * scale, y * scale, z * scale, bright);
+        acc++;
+      }
+    }
+
+    const count = acc;
+    const pos = new Float32Array(count * 3);
+    const bri = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      pos[i * 3]     = accepted[i * 4];
+      pos[i * 3 + 1] = accepted[i * 4 + 1];
+      pos[i * 3 + 2] = accepted[i * 4 + 2];
+      bri[i]         = accepted[i * 4 + 3];
+    }
+
+    points = { pos, bri, count };
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, briBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, bri, gl.STATIC_DRAW);
+
+    // HUD
+    document.getElementById('hud-points').textContent = count.toLocaleString();
+    document.getElementById('hud-accepted').textContent = ((acc / attempts) * 100).toFixed(1) + '%';
+    document.getElementById('status-text').textContent = `${count.toLocaleString()} points rendered`;
+
+    showLoading(false);
+    render();
+    resolve();
+  }, 50);
+  }); // end Promise
+}
+
+// ── RENDER ──
+const proj = perspective(Math.PI / 4, 1, 0.01, 1000);
+const tmp1 = mat4(), tmp2 = mat4(), tmp3 = mat4(), tmp4 = mat4();
+
+function render() {
+  if (!gl) return;
+  proj[0] = 1 / (Math.tan(Math.PI / 8) * (W / H));
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  if (points.count === 0) return;
+
+  const ry = rotY(rotY_, tmp1);
+  const rx = rotX(rotX_, tmp2);
+  const tr = translate(0, 0, -zoom, tmp3);
+
+  mul(ry, rx, tmp4);
+  const view = mul(tr, tmp4, mat4());
+  const mvp = mul(proj, view, mat4());
+
+  gl.useProgram(prog);
+  gl.uniformMatrix4fv(uMVP, false, mvp);
+  gl.uniform1f(uSize, ptSize);
+
+  const sch = colorSchemes[state.scheme];
+  gl.uniform3fv(uColor1, sch.c1);
+  gl.uniform3fv(uColor2, sch.c2);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, briBuf);
+  gl.enableVertexAttribArray(aBright);
+  gl.vertexAttribPointer(aBright, 1, gl.FLOAT, false, 0, 0);
+
+  gl.drawArrays(gl.POINTS, 0, points.count);
+}
+
+// ── ANIMATION LOOP ──
+function loop() {
+  if (autoRotate) {
+    rotY_ += 0.008;
+    render();
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ── MOUSE / TOUCH ──
+canvas.addEventListener('mousedown', e => { drag = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('mouseup', () => drag = false);
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  rotY_ += (e.clientX - lastX) * 0.006;
+  rotX_ += (e.clientY - lastY) * 0.006;
+  lastX = e.clientX; lastY = e.clientY;
+  render();
+});
+
+canvas.addEventListener('wheel', e => {
+  zoom = Math.max(1, Math.min(20, zoom + e.deltaY * 0.01));
+  render();
+});
+
+// Touch
+let touch0;
+canvas.addEventListener('touchstart', e => { touch0 = e.touches[0]; drag = true; lastX = touch0.clientX; lastY = touch0.clientY; });
+canvas.addEventListener('touchend', () => drag = false);
+canvas.addEventListener('touchmove', e => {
+  if (!drag) return;
+  const t = e.touches[0];
+  rotY_ += (t.clientX - lastX) * 0.006;
+  rotX_ += (t.clientY - lastY) * 0.006;
+  lastX = t.clientX; lastY = t.clientY;
+  render();
+});
+
+// ── UI HELPERS ──
+function showLoading(show) {
+  document.getElementById('loading').classList.toggle('show', show);
+}
+
+function showTooltip(msg, dur = 2000) {
+  const el = document.getElementById('tooltip');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+const orbitalInfo = {
+  's': 'Spherical, no angular nodes. Electron exists in a shell around nucleus.',
+  'p': 'Dumbbell-shaped, 1 angular node. Three orientations (x, y, z).',
+  'd': 'Four-lobed, 2 angular nodes. Five orientations. Transition metals.',
+  'f': 'Complex multi-lobed, 3 angular nodes. Rare-earth elements.',
+};
+
+const orbitalNames = ['s','p','d','f'];
+
+const fullInfo = {
+  '1s': 'Ground state. Spherical symmetry. Single electron closest to nucleus.',
+  '2s': 'Second shell s-orbital. Larger sphere with 1 radial node inside.',
+  '2p': 'Second shell p-orbital. Dumbbell shape, orientation depends on mₗ.',
+  '3s': 'Third shell. Spherical with 2 internal radial nodes.',
+  '3p': 'Third shell p-orbital. Elongated dumbbell, 1 radial node.',
+  '3d': 'Third shell d-orbital. Four-lobed or donut+lobes depending on mₗ.',
+  '4s': 'Fourth shell. Spherical, 3 radial nodes, outermost filled first.',
+  '4p': 'Fourth shell p-orbital. Largest p-type visible here.',
+  '4d': 'Fourth shell d-orbital. Large four-lobed electron cloud.',
+  '4f': 'Fourth shell f-orbital. Complex shape, 3 angular nodes.',
+};
+
+function updateOrbitalLabel() {
+  const { n, l, ml, ms } = state;
+  const lName = orbitalNames[l];
+  const label = `${n}${lName}`;
+  document.getElementById('orbital-label').textContent = label;
+  document.getElementById('orbital-desc').innerHTML =
+    `n=${n} · l=${l} · mₗ=${ml} · mₛ=${ms > 0 ? '↑' : '↓'} &nbsp;|&nbsp; ${lName.toUpperCase()}-TYPE`;
+
+  document.getElementById('hud-orbital').textContent = `n=${n} l=${l} mₗ=${ml}`;
+  document.getElementById('hud-type').textContent = `${lName}-orbital`;
+  document.getElementById('hud-shape').textContent = l === 0 ? 'spherical' : l === 1 ? 'dumbbell' : l === 2 ? 'four-lobed' : 'complex';
+
+  const E = (-13.6 / (n * n)).toFixed(2);
+  document.getElementById('hud-energy').textContent = `E = ${E} eV`;
+  document.querySelector('#hud-br div:last-child').textContent = `rₘₐₓ = ${n*n}a₀`;
+
+  const rn = n - l - 1;
+  const an = l;
+  document.getElementById('radial-nodes').textContent = rn;
+  document.getElementById('angular-nodes').textContent = an;
+  document.getElementById('total-nodes').textContent = rn + an;
+
+  const infoEl = document.getElementById('info-box');
+  infoEl.innerHTML = `<strong>${label} Orbital</strong>${fullInfo[label] || orbitalInfo[lName]}`;
+
+  document.getElementById('spin-indicator').textContent = ms > 0 ? '↑' : '↓';
+}
+
+function updateLButtons() {
+  const { n, l } = state;
+  const cont = document.getElementById('l-btns');
+  cont.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement('button');
+    b.className = 'qn-btn' + (i === l ? ' active' : '');
+    b.textContent = orbitalNames[i];
+    b.dataset.val = i;
+    b.addEventListener('click', () => {
+      state.l = i;
+      state.ml = 0;
+      updateLButtons();
+      updateMLButtons();
+      updateOrbitalLabel();
+      generateOrbital(getDensity());
+    });
+    cont.appendChild(b);
+  }
+}
+
+function updateMLButtons() {
+  const { l, ml } = state;
+  const cont = document.getElementById('ml-btns');
+  cont.innerHTML = '';
+  for (let m = -l; m <= l; m++) {
+    const b = document.createElement('button');
+    b.className = 'qn-btn' + (m === ml ? ' active' : '');
+    b.textContent = m;
+    b.dataset.val = m;
+    b.addEventListener('click', () => {
+      state.ml = m;
+      [...cont.children].forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      updateOrbitalLabel();
+      generateOrbital(getDensity());
+    });
+    cont.appendChild(b);
+  }
+}
+
+function getDensity() {
+  const v = parseInt(document.getElementById('density').value);
+  return [1, 2, 3, 5, 8, 10, 15, 20, 30, 50][v - 1];
+}
+
+// ── EVENT LISTENERS ──
+document.getElementById('n-btns').addEventListener('click', e => {
+  const b = e.target.closest('.qn-btn');
+  if (!b) return;
+  const val = parseInt(b.dataset.val);
+  state.n = val;
+  if (state.l >= val) state.l = val - 1;
+  state.ml = 0;
+  [...document.getElementById('n-btns').children].forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  updateLButtons();
+  updateMLButtons();
+  updateOrbitalLabel();
+  generateOrbital(getDensity());
+});
+
+document.getElementById('spin-up').addEventListener('click', () => {
+  state.ms = 1;
+  document.getElementById('spin-up').classList.add('active-up');
+  document.getElementById('spin-down').classList.remove('active-down');
+  updateOrbitalLabel();
+  showTooltip('Spin ↑ — mₛ = +½');
+});
+
+document.getElementById('spin-down').addEventListener('click', () => {
+  state.ms = -1;
+  document.getElementById('spin-up').classList.remove('active-up');
+  document.getElementById('spin-down').classList.add('active-down');
+  updateOrbitalLabel();
+  showTooltip('Spin ↓ — mₛ = −½');
+});
+
+document.getElementById('density').addEventListener('input', function () {
+  const labels = ['10k','20k','30k','50k','80k','100k','150k','200k','300k','500k'];
+  document.getElementById('density-val').textContent = labels[this.value - 1];
+});
+
+document.getElementById('point-size').addEventListener('input', function () {
+  ptSize = (this.value / 4).toFixed(1);
+  document.getElementById('size-val').textContent = ptSize;
+  render();
+});
+
+document.querySelectorAll('.color-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.color-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.scheme = b.dataset.scheme;
+    render();
+  });
+});
+
+document.getElementById('btn-generate').addEventListener('click', () => {
+  generateOrbital(getDensity());
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  points = { pos: new Float32Array(0), bri: new Float32Array(0), count: 0 };
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  document.getElementById('hud-points').textContent = '0';
+  document.getElementById('status-text').textContent = 'Cleared';
+});
+
+document.getElementById('btn-rotate').addEventListener('click', function () {
+  autoRotate = !autoRotate;
+  this.textContent = autoRotate ? '⟲ Stop Rotation' : '⟲ Auto Rotate';
+  this.style.borderColor = autoRotate ? 'var(--accent)' : '';
+  this.style.color = autoRotate ? 'var(--accent)' : '';
+});
+
+let animRunning = false;
+document.getElementById('btn-animate').addEventListener('click', async function () {
+  if (animRunning) return;
+  animRunning = true;
+
+  const seq = [];
+  for (let n = 1; n <= 4; n++) {
+    for (let l = 0; l < n; l++) {
+      for (let ml = -l; ml <= l; ml++) {
+        seq.push({ n, l, ml });
+      }
+    }
+  }
+
+  this.textContent = `■ Animating (${seq.length} states)...`;
+
+  for (const s of seq) {
+    if (!animRunning) break;
+    Object.assign(state, s, { ms: state.ms, scheme: state.scheme });
+
+    [...document.getElementById('n-btns').children].forEach(x => {
+      x.classList.toggle('active', parseInt(x.dataset.val) === s.n);
+    });
+    updateLButtons();
+    updateMLButtons();
+    updateOrbitalLabel();
+    await generateOrbital(3);
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  animRunning = false;
+  this.textContent = '▶ Animate n=1→4 (all)';
+});
+
+// ── INIT ──
+updateLButtons();
+updateMLButtons();
+updateOrbitalLabel();
+generateOrbital(3);
+</script>
+</body>
+</html>

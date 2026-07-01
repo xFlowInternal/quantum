@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>50/50 Beam Splitter Mirror</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a1a, #1a1a3e);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #00ff88;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        
+        .subtitle {
+            color: #888;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        canvas {
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            background: #000011;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.4);
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 1px solid #00ff88;
+        }
+        
+        .slider {
+            width: 150px;
+            height: 5px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .info-panel {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 900px;
+        }
+        
+        .info-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            text-align: center;
+        }
+        
+        .info-box h3 {
+            color: #00ff88;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        
+        .value {
+            color: #00ffff;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .physics-explanation {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #00ff88;
+            max-width: 800px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>50/50 Beam Splitter Mirror</h1>
+    <p class="subtitle">Watch light split into two perpendicular paths with adjustable splitting ratio</p>
+    
+    <canvas id="beamCanvas" width="900" height="600"></canvas>
+    
+    <div class="controls">
+        <button onclick="toggleAnimation()">Pause/Resume</button>
+        <button onclick="resetAnimation()">Reset</button>
+        <button onclick="toggleSinglePhotonMode()">Single Photon Mode</button>
+        <div class="slider-container">
+            <label>Split Ratio:</label>
+            <input type="range" min="10" max="90" step="5" value="50" class="slider" id="splitSlider" oninput="updateSplitRatio(this.value)">
+            <span id="splitValue">50/50</span>
+        </div>
+        <div class="slider-container">
+            <label>Light Intensity:</label>
+            <input type="range" min="0.1" max="1.0" step="0.1" value="1.0" class="slider" id="intensitySlider" oninput="updateIntensity(this.value)">
+            <span id="intensityValue">100%</span>
+        </div>
+    </div>
+    
+    <div class="info-panel">
+        <div class="info-box">
+            <h3>Horizontal Detector</h3>
+            <div class="value" id="horizontalCount">0</div>
+        </div>
+        <div class="info-box">
+            <h3>Vertical Detector</h3>
+            <div class="value" id="verticalCount">0</div>
+        </div>
+        <div class="info-box">
+            <h3>Detection Ratio</h3>
+            <div class="value" id="detectionRatio">0:0</div>
+        </div>
+        <div class="info-box">
+            <h3>Single Photon Mode</h3>
+            <div class="value" id="photonMode">OFF</div>
+        </div>
+        <div class="info-box">
+            <h3>Split Ratio</h3>
+            <div class="value" id="splitRatioDisplay">50/50</div>
+        </div>
+        <div class="info-box">
+            <h3>Total Detections</h3>
+            <div class="value" id="totalDetections">0</div>
+        </div>
+    </div>
+    
+    <div class="physics-explanation">
+        <h3 style="color: #00ff88;">Beam Splitter Physics</h3>
+        <p>A beam splitter is a partially silvered mirror that divides incident light into two beams traveling at 90° to each other.</p>
+        <p><strong>Single Photon Mode:</strong> Each individual photon goes to EITHER the horizontal OR vertical detector (never both). Over time, the detection ratio approaches the split ratio.</p>
+        <p><strong>Classical Mode:</strong> Continuous light beam is split according to the intensity ratio.</p>
+        <p><strong>Conservation:</strong> All photons are detected - none are lost in the beam splitter.</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('beamCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let animationId;
+        let time = 0;
+        let isAnimating = true;
+        let splitRatio = 50; // Percentage transmitted
+        let lightIntensity = 1.0;
+        let totalPhotons = 0;
+        let singlePhotonMode = false;
+        
+        // Light ray arrays
+        let incidentRays = [];
+        let transmittedRays = [];
+        let reflectedRays = [];
+        
+        // Positions
+        const laserX = 150;
+        const laserY = 300;
+        const mirrorX = 450;
+        const mirrorY = 300;
+        const mirrorSize = 80;
+        const horizontalDetectorX = 700;
+        const horizontalDetectorY = 300;
+        const verticalDetectorX = 450;
+        const verticalDetectorY = 150; // Moved closer to mirror
+        
+        // Detection counters
+        let horizontalDetections = 0;
+        let verticalDetections = 0;
+        let lastHorizontalDetection = 0;
+        let lastVerticalDetection = 0;
+        
+        function updateSplitRatio(value) {
+            splitRatio = parseInt(value);
+            const reflected = 100 - splitRatio;
+            document.getElementById('splitValue').textContent = `${splitRatio}/${reflected}`;
+            updateUI();
+        }
+        
+        function updateIntensity(value) {
+            lightIntensity = parseFloat(value);
+            document.getElementById('intensityValue').textContent = Math.round(lightIntensity * 100) + '%';
+            updateUI();
+        }
+        
+        function toggleSinglePhotonMode() {
+            singlePhotonMode = !singlePhotonMode;
+            
+            if (singlePhotonMode) {
+                // Reset counters when entering single photon mode
+                horizontalDetections = 0;
+                verticalDetections = 0;
+                lastHorizontalDetection = 0;
+                lastVerticalDetection = 0;
+                totalPhotons = 0;
+                
+                // Clear all existing photons
+                incidentRays = [];
+                transmittedRays = [];
+                reflectedRays = [];
+                
+                // Set very low intensity for single photons
+                lightIntensity = 0.1;
+                document.getElementById('intensitySlider').value = 0.1;
+                document.getElementById('intensityValue').textContent = '10%';
+            }
+            updateUI();
+        }
+        
+        function drawBackground() {
+            // Clear canvas with gradient
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, 'rgba(0, 30, 60, 0.9)');
+            gradient.addColorStop(1, 'rgba(0, 8, 24, 1)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add reference grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        function drawLaser() {
+            // Laser housing
+            ctx.fillStyle = '#444';
+            ctx.fillRect(laserX - 40, laserY - 20, 80, 40);
+            
+            // Laser aperture
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.arc(laserX + 35, laserY, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Main laser beam
+            const beamIntensity = lightIntensity;
+            ctx.strokeStyle = `rgba(255, 100, 100, ${beamIntensity})`;
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(laserX + 40, laserY);
+            ctx.lineTo(mirrorX - mirrorSize/2, mirrorY);
+            ctx.stroke();
+            
+            // Beam glow
+            ctx.strokeStyle = `rgba(255, 100, 100, ${beamIntensity * 0.4})`;
+            ctx.lineWidth = 16;
+            ctx.beginPath();
+            ctx.moveTo(laserX + 40, laserY);
+            ctx.lineTo(mirrorX - mirrorSize/2, mirrorY);
+            ctx.stroke();
+            
+            // Label
+            ctx.font = 'bold 16px Arial';
+            ctx.fillStyle = '#00ff88';
+            ctx.fillText('Laser Source', laserX - 30, laserY - 35);
+            
+            // Intensity indicator
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#ffaaaa';
+            ctx.fillText(`${Math.round(lightIntensity * 100)}% Power`, laserX - 20, laserY + 50);
+        }
+        
+        function drawBeamSplitter() {
+            // Mirror substrate
+            ctx.fillStyle = '#333';
+            ctx.save();
+            ctx.translate(mirrorX, mirrorY);
+            ctx.rotate(Math.PI / 4); // 45 degree angle
+            ctx.fillRect(-mirrorSize/2, -8, mirrorSize, 16);
+            ctx.restore();
+            
+            // Partially silvered coating (varies with split ratio)
+            const coatingAlpha = (100 - splitRatio) / 100;
+            ctx.fillStyle = `rgba(192, 192, 192, ${coatingAlpha})`;
+            ctx.save();
+            ctx.translate(mirrorX, mirrorY);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-mirrorSize/2, -6, mirrorSize, 12);
+            ctx.restore();
+            
+            // Mirror edges
+            ctx.strokeStyle = 'rgba(200, 200, 255, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.save();
+            ctx.translate(mirrorX, mirrorY);
+            ctx.rotate(Math.PI / 4);
+            ctx.strokeRect(-mirrorSize/2, -8, mirrorSize, 16);
+            ctx.restore();
+            
+            // Split ratio visualization
+            ctx.fillStyle = `rgba(100, 255, 100, ${splitRatio / 100 * 0.5})`;
+            ctx.save();
+            ctx.translate(mirrorX, mirrorY);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-mirrorSize/2, -6, mirrorSize * (splitRatio/100), 12);
+            ctx.restore();
+            
+            // Labels
+            ctx.font = 'bold 16px Arial';
+            ctx.fillStyle = '#00ff88';
+            ctx.fillText('Beam Splitter', mirrorX - 40, mirrorY - 60);
+            
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#ffff88';
+            ctx.fillText(`${splitRatio}% T / ${100-splitRatio}% R`, mirrorX - 35, mirrorY - 40);
+        }
+        
+        function drawDetectors() {
+            // Horizontal detector (transmitted beam)
+            ctx.fillStyle = horizontalDetections > 0 && (time - lastHorizontalDetection < 10) ? '#44ff44' : '#2a4d3a';
+            ctx.fillRect(horizontalDetectorX - 25, horizontalDetectorY - 40, 50, 80);
+            
+            // Horizontal detector window
+            ctx.fillStyle = '#4a7c59';
+            ctx.fillRect(horizontalDetectorX - 20, horizontalDetectorY - 30, 40, 60);
+            
+            // Horizontal detector active indicator
+            if (time - lastHorizontalDetection < 10) {
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(horizontalDetectorX, horizontalDetectorY - 50, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Vertical detector (reflected beam)
+            ctx.fillStyle = verticalDetections > 0 && (time - lastVerticalDetection < 10) ? '#4444ff' : '#2a2a4d';
+            ctx.fillRect(verticalDetectorX - 40, verticalDetectorY - 25, 80, 50);
+            
+            // Vertical detector window
+            ctx.fillStyle = '#4a4a7c';
+            ctx.fillRect(verticalDetectorX - 30, verticalDetectorY - 20, 60, 40);
+            
+            // Vertical detector active indicator
+            if (time - lastVerticalDetection < 10) {
+                ctx.fillStyle = '#0000ff';
+                ctx.beginPath();
+                ctx.arc(verticalDetectorX + 50, verticalDetectorY, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Detector labels
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = '#00ff88';
+            ctx.fillText('Horizontal Detector', horizontalDetectorX - 60, horizontalDetectorY - 60);
+            ctx.fillText(`Counts: ${horizontalDetections}`, horizontalDetectorX - 40, horizontalDetectorY + 60);
+            
+            ctx.fillText('Vertical Detector', verticalDetectorX - 50, verticalDetectorY - 40);
+            ctx.fillText(`Counts: ${verticalDetections}`, verticalDetectorX - 30, verticalDetectorY + 40);
+        }
+        
+        function generatePhotons() {
+            // Generate photons from laser
+            let photonRate;
+            
+            if (singlePhotonMode) {
+                // Very slow rate for single photons - only when no photons exist
+                photonRate = (incidentRays.length === 0 && transmittedRays.length === 0 && reflectedRays.length === 0) ? 0.01 : 0;
+            } else {
+                photonRate = lightIntensity * 0.4;
+            }
+            
+            if (Math.random() < photonRate) {
+                incidentRays.push({
+                    x: laserX + 40,
+                    y: laserY + (Math.random() - 0.5) * 8,
+                    vx: 4,
+                    vy: 0,
+                    energy: 1.0,
+                    alpha: singlePhotonMode ? 1.0 : lightIntensity,
+                    size: singlePhotonMode ? 6 : 2 + Math.random() * 2,
+                    isSinglePhoton: singlePhotonMode
+                });
+            }
+        }
+        
+        function updatePhotons() {
+            // Update incident photons
+            for (let i = incidentRays.length - 1; i >= 0; i--) {
+                const photon = incidentRays[i];
+                photon.x += photon.vx;
+                photon.y += photon.vy;
+                
+                // Check collision with beam splitter
+                const dx = photon.x - mirrorX;
+                const dy = photon.y - mirrorY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < mirrorSize/2 + 10) {
+                    totalPhotons++;
+                    
+                    // In single photon mode, each photon goes to ONE detector only
+                    // Decide transmission or reflection based on split ratio
+                    const goesToHorizontal = Math.random() * 100 < splitRatio;
+                    
+                    if (goesToHorizontal) {
+                        // Transmitted photon (toward horizontal detector)
+                        const directionX = horizontalDetectorX - photon.x;
+                        const directionY = horizontalDetectorY - photon.y;
+                        const distance = Math.sqrt(directionX * directionX + directionY * directionY);
+                        const speed = 3.5;
+                        
+                        transmittedRays.push({
+                            x: photon.x,
+                            y: photon.y,
+                            vx: (directionX / distance) * speed,
+                            vy: (directionY / distance) * speed,
+                            energy: photon.energy,
+                            alpha: photon.alpha,
+                            life: 100,
+                            size: photon.size,
+                            color: 'rgba(100, 255, 100, ',
+                            isSinglePhoton: photon.isSinglePhoton
+                        });
+                    } else {
+                        // Reflected photon (toward vertical detector)
+                        const directionX = verticalDetectorX - photon.x;
+                        const directionY = verticalDetectorY - photon.y;
+                        const distance = Math.sqrt(directionX * directionX + directionY * directionY);
+                        const speed = 3.5;
+                        
+                        reflectedRays.push({
+                            x: photon.x,
+                            y: photon.y,
+                            vx: (directionX / distance) * speed,
+                            vy: (directionY / distance) * speed,
+                            energy: photon.energy,
+                            alpha: photon.alpha,
+                            life: 100,
+                            size: photon.size,
+                            color: 'rgba(100, 150, 255, ',
+                            isSinglePhoton: photon.isSinglePhoton
+                        });
+                    }
+                    
+                    incidentRays.splice(i, 1);
+                } else if (photon.x > canvas.width) {
+                    incidentRays.splice(i, 1);
+                }
+            }
+            
+            // Update transmitted photons
+            for (let i = transmittedRays.length - 1; i >= 0; i--) {
+                const photon = transmittedRays[i];
+                photon.x += photon.vx;
+                photon.y += photon.vy;
+                photon.life--;
+                photon.alpha *= 0.995;
+                
+                // Check if photon hits horizontal detector
+                if (photon.x >= horizontalDetectorX - 25 && photon.x <= horizontalDetectorX + 25 &&
+                    Math.abs(photon.y - horizontalDetectorY) < 40) {
+                    horizontalDetections++;
+                    lastHorizontalDetection = time;
+                    transmittedRays.splice(i, 1);
+                    continue;
+                }
+                
+                if (photon.life <= 0 || photon.alpha < 0.1 || photon.x > canvas.width) {
+                    transmittedRays.splice(i, 1);
+                }
+            }
+            
+            // Update reflected photons
+            for (let i = reflectedRays.length - 1; i >= 0; i--) {
+                const photon = reflectedRays[i];
+                photon.x += photon.vx;
+                photon.y += photon.vy;
+                photon.life--;
+                photon.alpha *= 0.995;
+                
+                // Check if photon hits vertical detector (moving upward)
+                if (photon.y <= verticalDetectorY + 25 && photon.y >= verticalDetectorY - 25 &&
+                    photon.x >= verticalDetectorX - 40 && photon.x <= verticalDetectorX + 40) {
+                    verticalDetections++;
+                    lastVerticalDetection = time;
+                    reflectedRays.splice(i, 1);
+                    continue;
+                }
+                
+                if (photon.life <= 0 || photon.alpha < 0.1 || photon.y < 0) {
+                    reflectedRays.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawPhotons() {
+            // Draw incident photons
+            incidentRays.forEach(photon => {
+                const glowSize = photon.isSinglePhoton ? photon.size * 5 : photon.size * 2;
+                const gradient = ctx.createRadialGradient(photon.x, photon.y, 0, photon.x, photon.y, glowSize);
+                
+                if (photon.isSinglePhoton) {
+                    gradient.addColorStop(0, `rgba(255, 255, 0, ${photon.alpha})`);
+                    gradient.addColorStop(0.3, `rgba(255, 200, 0, ${photon.alpha * 0.8})`);
+                    gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
+                } else {
+                    gradient.addColorStop(0, `rgba(255, 100, 100, ${photon.alpha})`);
+                    gradient.addColorStop(0.5, `rgba(255, 150, 100, ${photon.alpha * 0.7})`);
+                    gradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                }
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(photon.x, photon.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Photon core
+                ctx.fillStyle = photon.isSinglePhoton ? 'rgba(255, 255, 255, 1)' : `rgba(255, 255, 255, ${photon.alpha})`;
+                ctx.beginPath();
+                ctx.arc(photon.x, photon.y, photon.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Single photon label with ID
+                if (photon.isSinglePhoton) {
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.lineWidth = 2;
+                    const label = `Photon #${horizontalDetections + verticalDetections + 1}`;
+                    ctx.strokeText(label, photon.x - 35, photon.y - 25);
+                    ctx.fillText(label, photon.x - 35, photon.y - 25);
+                }
+            });
+            
+            // Draw transmitted photons
+            transmittedRays.forEach(photon => {
+                const glowSize = photon.isSinglePhoton ? photon.size * 4 : photon.size * 2;
+                const gradient = ctx.createRadialGradient(photon.x, photon.y, 0, photon.x, photon.y, glowSize);
+                gradient.addColorStop(0, photon.color + photon.alpha + ')');
+                gradient.addColorStop(0.5, photon.color + (photon.alpha * 0.7) + ')');
+                gradient.addColorStop(1, photon.color + '0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(photon.x, photon.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Photon core
+                ctx.fillStyle = photon.color + photon.alpha + ')';
+                ctx.beginPath();
+                ctx.arc(photon.x, photon.y, photon.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Single photon path label
+                if (photon.isSinglePhoton) {
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillStyle = 'rgba(0, 255, 0, 1)';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText('→ HORIZONTAL', photon.x - 35, photon.y - 15);
+                    ctx.fillText('→ HORIZONTAL', photon.x - 35, photon.y - 15);
+                }
+            });
+            
+            // Draw reflected photons
+            reflectedRays.forEach(photon => {
+                const glowSize = photon.isSinglePhoton ? photon.size * 4 : photon.size * 2;
+                const gradient = ctx.createRadialGradient(photon.x, photon.y, 0, photon.x, photon.y, glowSize);
+                gradient.addColorStop(0, photon.color + photon.alpha + ')');
+                gradient.addColorStop(0.5, photon.color + (photon.alpha * 0.7) + ')');
+                gradient.addColorStop(1, photon.color + '0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(photon.x, photon.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Photon core
+                ctx.fillStyle = photon.color + photon.alpha + ')';
+                ctx.beginPath();
+                ctx.arc(photon.x, photon.y, photon.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Single photon path label
+                if (photon.isSinglePhoton) {
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillStyle = 'rgba(100, 150, 255, 1)';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText('↑ VERTICAL', photon.x - 25, photon.y - 15);
+                    ctx.fillText('↑ VERTICAL', photon.x - 25, photon.y - 15);
+                }
+            });
+        }
+        
+        function drawPaths() {
+            // Draw expected beam paths
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            
+            // Incident path
+            ctx.beginPath();
+            ctx.moveTo(laserX + 40, laserY);
+            ctx.lineTo(mirrorX, mirrorY);
+            ctx.stroke();
+            
+            // Transmitted path (horizontal)
+            ctx.beginPath();
+            ctx.moveTo(mirrorX, mirrorY);
+            ctx.lineTo(horizontalDetectorX, horizontalDetectorY);
+            ctx.stroke();
+            
+            // Reflected path (vertical)
+            ctx.beginPath();
+            ctx.moveTo(mirrorX, mirrorY);
+            ctx.lineTo(verticalDetectorX, verticalDetectorY);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            // Draw intensity beams
+            // Transmitted beam
+            const transmittedWidth = Math.max(2, (splitRatio / 100) * 12);
+            ctx.strokeStyle = `rgba(100, 255, 100, ${(splitRatio / 100) * lightIntensity})`;
+            ctx.lineWidth = transmittedWidth;
+            ctx.beginPath();
+            ctx.moveTo(mirrorX, mirrorY);
+            ctx.lineTo(horizontalDetectorX, horizontalDetectorY);
+            ctx.stroke();
+            
+            // Reflected beam
+            const reflectedWidth = Math.max(2, ((100 - splitRatio) / 100) * 12);
+            ctx.strokeStyle = `rgba(100, 150, 255, ${((100 - splitRatio) / 100) * lightIntensity})`;
+            ctx.lineWidth = reflectedWidth;
+            ctx.beginPath();
+            ctx.moveTo(mirrorX, mirrorY);
+            ctx.lineTo(verticalDetectorX, verticalDetectorY);
+            ctx.stroke();
+            
+            // Path labels
+            ctx.font = '14px Arial';
+            ctx.fillStyle = `rgba(100, 255, 100, ${Math.max(0.6, splitRatio / 100)})`;
+            ctx.fillText(`${splitRatio}% Transmitted`, horizontalDetectorX - 80, horizontalDetectorY + 20);
+            
+            ctx.fillStyle = `rgba(100, 150, 255, ${Math.max(0.6, (100 - splitRatio) / 100)})`;
+            ctx.fillText(`${100 - splitRatio}% Reflected`, verticalDetectorX + 20, verticalDetectorY - 10);
+        }
+        
+        function updateUI() {
+            document.getElementById('horizontalCount').textContent = horizontalDetections;
+            document.getElementById('verticalCount').textContent = verticalDetections;
+            document.getElementById('totalDetections').textContent = horizontalDetections + verticalDetections;
+            document.getElementById('photonMode').textContent = singlePhotonMode ? 'ON' : 'OFF';
+            document.getElementById('splitRatioDisplay').textContent = `${splitRatio}/${100-splitRatio}`;
+            
+            // Calculate detection ratio
+            const total = horizontalDetections + verticalDetections;
+            if (total > 0) {
+                const hRatio = Math.round((horizontalDetections / total) * 100);
+                const vRatio = Math.round((verticalDetections / total) * 100);
+                document.getElementById('detectionRatio').textContent = `${hRatio}:${vRatio}`;
+            } else {
+                document.getElementById('detectionRatio').textContent = '0:0';
+            }
+            
+            // Update photon mode display with additional info
+            if (singlePhotonMode) {
+                const modeText = total > 0 ? `ON (${total} detected)` : 'ON (waiting...)';
+                document.getElementById('photonMode').textContent = modeText;
+            }
+        }
+        
+        function animate() {
+            if (!isAnimating) return;
+            
+            drawBackground();
+            drawLaser();
+            drawBeamSplitter();
+            drawDetectors();
+            drawPaths();
+            
+            generatePhotons();
+            updatePhotons();
+            drawPhotons();
+            
+            updateUI();
+            
+            time += 1;
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            if (isAnimating) animate();
+        }
+        
+        function resetAnimation() {
+            time = 0;
+            totalPhotons = 0;
+            horizontalDetections = 0;
+            verticalDetections = 0;
+            lastHorizontalDetection = 0;
+            lastVerticalDetection = 0;
+            incidentRays = [];
+            transmittedRays = [];
+            reflectedRays = [];
+        }
+        
+        // Initialize
+        updateUI();
+        animate();
+    </script>
+</body>
+</html>

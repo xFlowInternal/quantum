@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECC Chat Demonstration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ECC Encryption Chat Demo</h1>
+        <p class="subtitle">Educational demonstration of Elliptic Curve Cryptography</p>
+        
+        <!-- Curve Selection Section -->
+        <div class="curve-selection-panel">
+            <h2>🔧 ECC Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label for="curveSelect">Select Elliptic Curve:</label>
+                    <select id="curveSelect" class="curve-dropdown">
+                        <option value="P-256">P-256 (secp256r1) - 256-bit</option>
+                        <option value="P-384">P-384 (secp384r1) - 384-bit</option>
+                        <option value="P-521">P-521 (secp521r1) - 521-bit</option>
+                    </select>
+                </div>
+                <div class="config-item">
+                    <button id="showCurveDetails" class="btn btn-info">Show Curve Details</button>
+                </div>
+            </div>
+            
+            <div id="curveDetails" class="curve-details hidden">
+                <h3>📊 Curve Parameters</h3>
+                <div class="param-grid">
+                    <div class="param-item">
+                        <label>Curve Equation:</label>
+                        <div class="param-value">y² = x³ + ax + b (mod p)</div>
+                    </div>
+                    <div class="param-item">
+                        <label>Prime Field (p):</label>
+                        <div class="param-value" id="primeField"></div>
+                    </div>
+                    <div class="param-item">
+                        <label>Generator Point (G) - Primitive Element:</label>
+                        <div class="param-value" id="generatorPoint"></div>
+                    </div>
+                    <div class="param-item">
+                        <label>Order of the Group (n):</label>
+                        <div class="param-value" id="groupOrder"></div>
+                    </div>
+                    <div class="param-item">
+                        <label>Cofactor (h):</label>
+                        <div class="param-value" id="cofactor"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="users-container">
+            <!-- User 1 -->
+            <div class="user-box">
+                <h2>User 1 (Alice)</h2>
+                
+                <div class="key-section">
+                    <h3>Step 1: Generate Keys</h3>
+                    <button id="generateUser1" class="btn btn-primary">Generate Keys</button>
+                    
+                    <div id="user1Keys" class="keys-display hidden">
+                        <div class="key-generation-info">
+                            <p><strong>Key Generation Process:</strong></p>
+                            <p>1. Select random private key: d ∈ [1, n-1]</p>
+                            <p>2. Calculate public key: Q = d × G</p>
+                        </div>
+                        <div class="key-item">
+                            <label>Private Key (Secret):</label>
+                            <div class="key-value private-key" id="user1PrivateKey"></div>
+                        </div>
+                        <div class="key-item">
+                            <label>Public Key (Share):</label>
+                            <div class="key-value public-key" id="user1PublicKey"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exchange-section">
+                    <h3>Step 2: Share Public Key</h3>
+                    <button id="shareUser1" class="btn btn-secondary" disabled>Send Public Key to User 2</button>
+                    <div id="user1Sent" class="status-message hidden">✓ Public key sent!</div>
+                </div>
+
+                <div class="receive-section">
+                    <h3>Step 3: Receive Public Key</h3>
+                    <div id="user1Received" class="received-key hidden">
+                        <label>Received from User 2:</label>
+                        <div class="key-value received-key-value" id="user1ReceivedKey"></div>
+                        <div class="status-message success">✓ Key received successfully!</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User 2 -->
+            <div class="user-box">
+                <h2>User 2 (Bob)</h2>
+                
+                <div class="key-section">
+                    <h3>Step 1: Generate Keys</h3>
+                    <button id="generateUser2" class="btn btn-primary">Generate Keys</button>
+                    
+                    <div id="user2Keys" class="keys-display hidden">
+                        <div class="key-generation-info">
+                            <p><strong>Key Generation Process:</strong></p>
+                            <p>1. Select random private key: d ∈ [1, n-1]</p>
+                            <p>2. Calculate public key: Q = d × G</p>
+                        </div>
+                        <div class="key-item">
+                            <label>Private Key (Secret):</label>
+                            <div class="key-value private-key" id="user2PrivateKey"></div>
+                        </div>
+                        <div class="key-item">
+                            <label>Public Key (Share):</label>
+                            <div class="key-value public-key" id="user2PublicKey"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exchange-section">
+                    <h3>Step 2: Share Public Key</h3>
+                    <button id="shareUser2" class="btn btn-secondary" disabled>Send Public Key to User 1</button>
+                    <div id="user2Sent" class="status-message hidden">✓ Public key sent!</div>
+                </div>
+
+                <div class="receive-section">
+                    <h3>Step 3: Receive Public Key</h3>
+                    <div id="user2Received" class="received-key hidden">
+                        <label>Received from User 1:</label>
+                        <div class="key-value received-key-value" id="user2ReceivedKey"></div>
+                        <div class="status-message success">✓ Key received successfully!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>📚 What's Happening?</h3>
+            <div id="infoText">
+                <p><strong>Step 1:</strong> Click "Generate Keys" for both users to create their ECC key pairs.</p>
+                <p><strong>Step 2:</strong> Share public keys between users (private keys stay secret!).</p>
+                <p><strong>Step 3:</strong> Both users receive each other's public keys.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="ecc.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECC Secure Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <h1>🔐 ECC Secure Chat</h1>
+            <p class="subtitle">End-to-End Encrypted Messaging</p>
+            <div class="login-form">
+                <input type="text" id="usernameInput" placeholder="Enter your username" maxlength="20">
+                <input type="text" id="roomIdInput" placeholder="Enter room ID (e.g., room123)" maxlength="30">
+                <button id="joinBtn" class="btn btn-primary">Join Chat</button>
+            </div>
+            <div class="info-box">
+                <p>💡 <strong>How it works:</strong></p>
+                <p>1. Enter a username and room ID</p>
+                <p>2. Share the room ID with your friend</p>
+                <p>3. Both join the same room to chat securely</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Application -->
+    <div id="chatApp" class="hidden">
+        <div class="container">
+            <div class="header">
+                <h1>🔐 ECC Secure Chat</h1>
+                <div class="user-info">
+                    <span id="currentUsername"></span>
+                    <span class="room-badge">Room: <span id="currentRoom"></span></span>
+                </div>
+            </div>
+
+            <!-- Curve Selection Section -->
+            <div class="curve-selection-panel">
+                <h2>🔧 Step 1: Select Elliptic Curve</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="curveSelect">Choose your encryption curve:</label>
+                        <select id="curveSelect" class="curve-dropdown">
+                            <option value="P-256">P-256 (secp256r1) - 256-bit</option>
+                            <option value="P-384">P-384 (secp384r1) - 384-bit</option>
+                            <option value="P-521">P-521 (secp521r1) - 521-bit</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <button id="showCurveDetailsBtn" class="btn btn-info">Show Curve Details</button>
+                    </div>
+                </div>
+                
+                <div id="curveDetails" class="curve-details hidden">
+                    <h3>📊 Curve Parameters</h3>
+                    <div id="curveVisualization" class="curve-visualization">
+                        <canvas id="curveCanvas" width="400" height="400"></canvas>
+                        <div class="curve-info">
+                            <p><strong>Visualizing:</strong> <span id="curveName"></span></p>
+                            <p class="small-text">This is a simplified 2D representation</p>
+                        </div>
+                    </div>
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <label>Curve Equation:</label>
+                            <div class="param-value">y² = x³ + ax + b (mod p)</div>
+                        </div>
+                        <div class="param-item">
+                            <label>Prime Field (p):</label>
+                            <div class="param-value" id="primeField"></div>
+                        </div>
+                        <div class="param-item">
+                            <label>Generator Point (G):</label>
+                            <div class="param-value" id="generatorPoint"></div>
+                        </div>
+                        <div class="param-item">
+                            <label>Order (n):</label>
+                            <div class="param-value" id="groupOrder"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Generation Section -->
+            <div class="key-generation-panel">
+                <h2>🔑 Step 2: Generate Your Keys</h2>
+                <button id="generateKeysBtn" class="btn btn-primary">Generate My Keys</button>
+                
+                <div id="keyGenerationProcess" class="process-visualization hidden">
+                    <h3>Key Generation Process:</h3>
+                    <div class="process-steps">
+                        <div class="process-step" id="step1">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Generating random private key...</strong>
+                                <p>d ∈ [1, n-1]</p>
+                                <div class="progress-bar"><div class="progress"></div></div>
+                            </div>
+                        </div>
+                        <div class="process-step" id="step2">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>Computing public key...</strong>
+                                <p>Q = d × G (scalar multiplication)</p>
+                                <div class="progress-bar"><div class="progress"></div></div>
+                            </div>
+                        </div>
+                        <div class="process-step" id="step3">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>Keys ready!</strong>
+                                <p>✓ Private and public keys generated</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="myKeys" class="keys-display hidden">
+                    <div class="key-item">
+                        <label>🔒 Your Private Key (Keep Secret!):</label>
+                        <div class="key-value private-key" id="myPrivateKey"></div>
+                    </div>
+                    <div class="key-item">
+                        <label>🔓 Your Public Key (Will be shared):</label>
+                        <div class="key-value public-key" id="myPublicKey"></div>
+                    </div>
+                    
+                    <!-- Key Size Metrics -->
+                    <div class="metrics-panel">
+                        <h4>📊 Key Size Metrics</h4>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-label">Private Key</span>
+                                <span class="metric-value" id="privateKeySize">-</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Public Key</span>
+                                <span class="metric-value" id="publicKeySize">-</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Total Size</span>
+                                <span class="metric-value" id="totalKeySize">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peer Connection Section -->
+            <div class="peer-section">
+                <h2>👥 Step 3: Connect with Peers</h2>
+                <div id="peersList" class="peers-list">
+                    <p class="waiting-message">Waiting for peers to join...</p>
+                </div>
+            </div>
+
+            <!-- Chat Section -->
+            <div id="chatSection" class="chat-section hidden">
+                <h2>💬 Secure Chat</h2>
+                <div class="chat-container">
+                    <div id="messagesContainer" class="messages-container"></div>
+                    <div class="message-input-container">
+                        <input type="text" id="messageInput" placeholder="Type your encrypted message..." />
+                        <button id="sendMessageBtn" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="activity-log">
+                <h3>📋 Activity Log</h3>
+                <div id="activityLog" class="log-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="ecc.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
