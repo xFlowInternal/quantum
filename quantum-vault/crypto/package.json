@@ -1,0 +1,25 @@
+{
+  "name": "quantum-vault-crypto",
+  "version": "1.0.0",
+  "description": "Quantum Vault Cryptography Module",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "benchmark": "node benchmarks/run-all.js",
+    "benchmark:ecc": "node benchmarks/ecc-benchmark.js",
+    "benchmark:pqc": "node benchmarks/pqc-benchmark.js",
+    "benchmark:qrng": "node benchmarks/qrng-benchmark.js"
+  },
+  "keywords": ["cryptography", "quantum", "ecc", "pqc", "qrng"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.5",
+    "pqc": "^1.0.13"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "benchmark": "^2.1.4"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "quantum-vault",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["backend", "frontend", "crypto"],
+  "scripts": {
+    "install:all": "npm install && npm install -w backend -w frontend -w crypto",
+    "dev": "docker-compose up",
+    "test": "npm run test -w backend -w frontend -w crypto",
+    "lint": "npm run lint -w backend -w frontend",
+    "build": "npm run build -w backend -w frontend"
+  }
+}

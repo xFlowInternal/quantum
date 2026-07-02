@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optical Phenomena Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0a0a1a, #1a1a3e, #2a1a4e);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .dashboard-header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #ff6b9d;
+            box-shadow: 0 5px 20px rgba(255, 107, 157, 0.3);
+        }
+        
+        .dashboard-header h1 {
+            font-size: 36px;
+            color: #ff6b9d;
+            text-shadow: 0 0 20px #ff6b9d;
+            margin-bottom: 10px;
+        }
+        
+        .dashboard-header p {
+            font-size: 18px;
+            color: #aaa;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 120px);
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-right: 2px solid #444;
+            overflow-y: auto;
+        }
+        
+        .phenomenon-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .phenomenon-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #ff6b9d;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 157, 0.3);
+        }
+        
+        .phenomenon-card.active {
+            background: rgba(255, 107, 157, 0.2);
+            border-color: #ff6b9d;
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.4);
+        }
+        
+        .phenomenon-card h3 {
+            color: #00ffff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .phenomenon-card p {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .phenomenon-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .content-area {
+            flex: 1;
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .animation-container {
+            width: 100%;
+            height: 100%;
+            display: none;
+            position: relative;
+        }
+        
+        .animation-container.active {
+            display: block;
+        }
+        
+        .animation-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+        }
+        
+        .controls-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #ff6b9d;
+            min-width: 250px;
+            z-index: 100;
+        }
+        
+        .controls-panel h4 {
+            color: #ff6b9d;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #aaa;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 5px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            margin-bottom: 5px;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b9d;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #ff6b9d, #ff8fb3);
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 5px;
+            font-size: 12px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+        }
+        
+        .value-display {
+            color: #00ffff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .physics-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            max-width: 300px;
+        }
+        
+        .physics-info h5 {
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .physics-info p {
+            color: #ccc;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #333;
+            border-top: 3px solid #ff6b9d;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .welcome-screen h2 {
+            color: #ff6b9d;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #ff6b9d;
+        }
+        
+        .welcome-screen p {
+            color: #aaa;
+            font-size: 18px;
+            margin-bottom: 30px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+            max-width: 800px;
+        }
+        
+        .feature-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        
+        .feature-item h4 {
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .feature-item p {
+            color: #ccc;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h1>🔬 Optical Phenomena Dashboard</h1>
+        <p>Interactive Physics Simulations - Explore Light, Optics, and Quantum Effects</p>
+    </div>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="phenomenon-card" onclick="loadPhenomenon('welcome')">
+                <div class="phenomenon-icon" style="background: #ff6b9d;">🏠</div>
+                <h3>Welcome</h3>
+                <p>Start here - Overview of optical phenomena demonstrations</p>
+            </div>
+            
+            <div class="phenomenon-card" onclick="loadPhenomenon('optical-qubit')">
+                <div class="phenomenon-icon" style="background: #ffaa00;">💡</div>
+                <h3>Optical Qubit</h3>
+                <p>Classical to quantum transition - photon detection and photoelectric effect</p>
+            </div>
+            
+            <div class="phenomenon-card" onclick="loadPhenomenon('beam-splitter')">
+                <div class="phenomenon-icon" style="background: #00ff88;">🔀</div>
+                <h3>Beam Splitter Mirror</h3>
+                <p>50/50 mirror splitting light into perpendicular transmitted and reflected beams</p>
+            </div>
+            
+            <div class="phenomenon-card" onclick="loadPhenomenon('prism-snells')">
+                <div class="phenomenon-icon" style="background: #ff6b9d;">🌈</div>
+                <h3>Prism & Snell's Law</h3>
+                <p>Light refraction, dispersion, and rainbow formation through triangular prism</p>
+            </div>
+        </div>
+        
+        <div class="content-area">
+            <!-- Welcome Screen -->
+            <div id="welcome" class="animation-container active">
+                <div class="welcome-screen">
+                    <h2>Welcome to Optical Phenomena</h2>
+                    <p>
+                        Explore the fascinating world of light and optics through interactive simulations. 
+                        Each phenomenon demonstrates fundamental physics principles with real-time controls 
+                        and accurate mathematical models.
+                    </p>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <h4>💡 Optical Qubit</h4>
+                            <p>Watch the transition from classical light to quantum photons and photoelectric effect</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4>🔀 Beam Splitter Mirror</h4>
+                            <p>See how a 50/50 mirror splits light into perpendicular transmitted and reflected beams</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4>🌈 Prism & Snell's Law</h4>
+                            <p>Watch light bend and separate into colors as it passes through a triangular prism</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4>📊 Physics Accuracy</h4>
+                            <p>Based on real equations: Photoelectric effect, beam splitting, and Snell's Law</p>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 30px; color: #ff6b9d;">
+                        👈 Select a phenomenon from the sidebar to begin exploring!
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Loading Screen Template -->
+            <div class="loading-screen" id="loading-screen" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Loading Physics Simulation...</p>
+            </div>
+            
+            <!-- Animation Containers -->
+            <div id="optical-qubit" class="animation-container">
+                <iframe class="animation-frame" id="optical-frame" data-src="optical_qubit_animation.html"></iframe>
+            </div>
+            
+            <div id="beam-splitter" class="animation-container">
+                <iframe class="animation-frame" id="beam-frame" data-src="beam_splitter_mirror.html"></iframe>
+            </div>
+            
+            <div id="prism-snells" class="animation-container">
+                <iframe class="animation-frame" id="prism-frame" data-src="prism_snells_law.html"></iframe>
+            </div>
+            
+            <!-- Physics Information Panel -->
+            <div class="physics-info" id="physics-info" style="display: none;">
+                <h5 id="physics-title">Physics Principle</h5>
+                <p id="physics-description">Select a phenomenon to see detailed physics information.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPhenomenon = 'welcome';
+        let loadedFrames = new Set();
+        
+        const phenomenaInfo = {
+            'optical-qubit': {
+                title: 'Photoelectric Effect',
+                description: 'Shows the quantum nature of light through photon detection. Demonstrates the transition from classical continuous light to discrete quantum photons.',
+                equations: ['E = hf', 'KE = hf - φ']
+            },
+            'beam-splitter': {
+                title: 'Beam Splitter Physics',
+                description: 'Demonstrates how a partially silvered mirror splits incident light into two perpendicular beams with adjustable splitting ratios.',
+                equations: ['T + R = 1', 'Energy Conservation']
+            },
+            'prism-snells': {
+                title: 'Snell\'s Law & Dispersion',
+                description: 'Shows light refraction through a prism, demonstrating Snell\'s law and chromatic dispersion that creates rainbows.',
+                equations: ['n₁sin(θ₁) = n₂sin(θ₂)', 'δ = θ₁ + θ₂ - A', 'n(λ) = A + B/λ²']
+            }
+        };
+        
+        function loadPhenomenon(phenomenonId) {
+            // Update active card
+            document.querySelectorAll('.phenomenon-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.target.closest('.phenomenon-card').classList.add('active');
+            
+            // Hide all containers
+            document.querySelectorAll('.animation-container').forEach(container => {
+                container.classList.remove('active');
+            });
+            
+            // Show loading screen
+            if (phenomenonId !== 'welcome') {
+                showLoadingScreen();
+            }
+            
+            // Show selected container
+            const targetContainer = document.getElementById(phenomenonId);
+            if (targetContainer) {
+                targetContainer.classList.add('active');
+                currentPhenomenon = phenomenonId;
+                
+                // Load iframe if not already loaded
+                if (phenomenonId !== 'welcome' && !loadedFrames.has(phenomenonId)) {
+                    const iframe = targetContainer.querySelector('iframe');
+                    if (iframe && iframe.dataset.src) {
+                        iframe.src = iframe.dataset.src;
+                        loadedFrames.add(phenomenonId);
+                        
+                        iframe.onload = function() {
+                            hideLoadingScreen();
+                            updatePhysicsInfo(phenomenonId);
+                        };
+                    }
+                } else if (phenomenonId !== 'welcome') {
+                    hideLoadingScreen();
+                    updatePhysicsInfo(phenomenonId);
+                } else {
+                    hidePhysicsInfo();
+                }
+            }
+        }
+        
+        function showLoadingScreen() {
+            document.getElementById('loading-screen').style.display = 'flex';
+        }
+        
+        function hideLoadingScreen() {
+            document.getElementById('loading-screen').style.display = 'none';
+        }
+        
+        function showControls() {
+            // Removed - no controls panel
+        }
+        
+        function hideControls() {
+            // Removed - no controls panel
+        }
+        
+        function updatePhysicsInfo(phenomenonId) {
+            const info = phenomenaInfo[phenomenonId];
+            if (info) {
+                document.getElementById('physics-title').textContent = info.title;
+                document.getElementById('physics-description').textContent = info.description;
+                document.getElementById('physics-info').style.display = 'block';
+            }
+        }
+        
+        function hidePhysicsInfo() {
+            document.getElementById('physics-info').style.display = 'none';
+        }
+        
+        function pauseResumeAnimation() {
+            // Removed - no animation controls
+        }
+        
+        function resetAnimation() {
+            // Removed - no animation controls
+        }
+        
+        function changeAnimationSpeed(speed) {
+            // Removed - no animation controls
+        }
+        
+        function toggleFullscreen() {
+            // Removed - no fullscreen control
+        }
+        
+        function captureScreenshot() {
+            // Removed - no screenshot feature
+        }
+        
+        function shareSimulation() {
+            // Removed - no share feature
+        }
+        
+        // Handle URL hash for direct linking
+        function handleHashChange() {
+            const hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                loadPhenomenon(hash);
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('hashchange', handleHashChange);
+        window.addEventListener('load', handleHashChange);
+        
+        // Listen for messages from iframes
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'animationState') {
+                // Handle animation state updates from iframes
+                console.log('Animation state:', event.data);
+            }
+        });
+    </script>
+</body>
+</html>
