@@ -1,14 +1,58 @@
 # Quantum Team Website Configuration
 
-This repository contains the configuration for the Quantum Team's public-facing web infrastructure, including the NGINX reverse proxy, SSL certificate management, and the routing configuration for various applications such as the MLKEM web app.
+This repository contains the configuration for the Quantum Team's public-facing web infrastructure, securely hosting the MLKEM web app and static research papers. 
 
-## High-Level Architecture
+This documentation is designed to help future developers easily understand, maintain, and expand the setup.
 
-At a high level, the system consists of a single public-facing NGINX container that acts as a reverse proxy. It intercepts all incoming HTTP and HTTPS traffic from the internet, handles secure SSL termination using Let's Encrypt certificates, and intelligently routes requests to various internal Docker containers based on the requested URL path. 
+---
 
-This architecture allows multiple independent applications to be hosted securely on the same domain (`quantum.xflowresearch.com`) without exposing their internal ports directly to the internet.
+## Repository Structure
 
-### Architecture Diagram
+To help you seamlessly navigate the configuration, here is the physical layout of this repository on the Host Server (`/home/xflow/quantum-team/quantum-website-conf/`):
+
+```text
+quantum-website-conf/
+├── NGINX/
+│   ├── docker-compose.yml   # Orchestrates the NGINX Reverse Proxy
+│   ├── nginx.conf           # The routing rules and SSL configuration
+│   └── renew_certs.sh       # Zero-downtime Let's Encrypt renewal script
+└── mlkem-webapp/
+    ├── docker-compose.yml   # Orchestrates the MLKEM application
+    ├── frontend/            # React/Vite Frontend source code
+    └── backend/             # Go Backend source code
+```
+
+---
+
+## What It Is
+
+Our infrastructure relies on three core technologies working perfectly in sync:
+
+1. **Docker:** A containerization platform. Instead of installing applications directly on the host server, we package our frontend, backend, and proxies into isolated "containers." This guarantees that the applications run exactly the same way everywhere, making deployments predictable and safe.
+2. **NGINX:** A high-performance web server acting as a **Reverse Proxy**. It sits at the absolute front door of our server environment. Its job is to listen for incoming web traffic and act as a "traffic cop," routing different URLs to different Docker containers, so we only need to expose one port to the public.
+3. **Let's Encrypt:** A free, automated certificate authority. We use it to automatically generate and renew the SSL certificates that give our website the secure `https://` green padlock, ensuring all user data is encrypted.
+
+---
+
+## How It Works
+
+When an internet user accesses `https://quantum.xflowresearch.com`, the traffic hits our public router, which forwards it to the NGINX container. NGINX decrypts the secure traffic and looks at the URL path to decide which internal Docker container should handle the request.
+
+### Request Lifecycle
+
+```mermaid
+flowchart LR
+    User([Internet User]) -- "Visits URL" --> NGINX["NGINX (Reverse Proxy)"]
+    NGINX -- "Checks Path" --> Router{What is the path?}
+    
+    Router -- "Path: /" --> HTML["Serves Static HTML Paper"]
+    Router -- "Path: /mlkem/" --> FE["Proxies to MLKEM Frontend"]
+    Router -- "Path: /.well-known/" --> LE["Serves Let's Encrypt Challenge"]
+```
+
+### Complete Architecture Diagram
+
+This diagram maps out exactly where the containers live physically and how they communicate.
 
 ```mermaid
 flowchart TD
@@ -49,19 +93,61 @@ flowchart TD
     style XFlow fill:#f4f6f7,stroke:#95a5a6,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
-## Technical Explanation
+---
+
+## Technical Details
 
 The infrastructure relies on Docker Compose to orchestrate the NGINX proxy and the individual application containers.
 
 ### 1. SSL and Let's Encrypt (Zero-Downtime)
-- **Port 80 (HTTP)** is open specifically for two reasons:
+
+Let's Encrypt is a globally trusted Certificate Authority. Once NGINX has the certificate, Let's Encrypt is *not* actively involved in every user connection; instead, the user's browser simply trusts the certificate NGINX presents.
+
+#### Secure Connection Flow (How it works for Users)
+
+```mermaid
+sequenceDiagram
+    participant User as Internet User (Browser)
+    participant NGINX as NGINX (Reverse Proxy)
+    participant App as Internal Docker Container
+
+    Note over User, NGINX: 1. SSL Handshake
+    User->>NGINX: Client Hello (Connect to HTTPS:443)
+    NGINX-->>User: Presents Let's Encrypt Certificate
+    Note over User: Browser verifies Let's Encrypt<br/>certificate is valid & trusted
+    User->>NGINX: Encrypted Connection Established (Green Padlock)
+    
+    Note over User, App: 2. Encrypted Traffic Flow
+    User->>NGINX: Encrypted Request (e.g., GET /mlkem/)
+    NGINX->>App: Decrypted Request (Safe Internal Network)
+    App-->>NGINX: Response
+    NGINX-->>User: Encrypted Response
+```
+
+**How the Browser Verifies the Certificate:**
+1. **Root of Trust**: Every modern browser (Chrome, Edge, Safari) comes pre-installed with a secure list of trusted "Root Certificate Authorities", which includes Let's Encrypt (ISRG Root X1).
+2. **Digital Signature**: The certificate presented by NGINX contains a cryptographic signature from Let's Encrypt.
+3. **Validation**: The browser checks its pre-installed Root CA list to verify that the signature is mathematically valid. It also checks that the certificate has not expired and that it strictly matches the domain `quantum.xflowresearch.com`.
+4. **Result**: Because the browser already inherently trusts Let's Encrypt, it trusts the signature, establishes the encrypted tunnel, and displays the "Secure" green padlock—all without needing to communicate with Let's Encrypt servers during the connection.
+
+- **Port 80 (HTTP)** is deliberately kept open for two reasons:
   1. To automatically redirect insecure traffic to Port 443 (HTTPS).
   2. To serve Let's Encrypt HTTP-01 challenges from the `/var/www/acme-challenge` directory.
 - **Certificate Renewal:** A script named `renew_certs.sh` is provided in the `NGINX/` directory. It uses the `acme.sh` Docker image in "webroot" mode to seamlessly renew certificates via Port 80 without requiring NGINX to stop, ensuring 100% uptime.
 
 #### SSL & Let's Encrypt Renewal Flow
 
-This process is automated via the `renew_certs.sh` script, which can be run periodically (e.g., via a monthly cron job).
+This process is automated via the `renew_certs.sh` script. To ensure the certificates never expire, this script should be scheduled to run automatically on the **Host Server** (not inside a container) via a cron job.
+
+To configure this, log into the host server (`192.168.20.167`) and edit the crontab:
+```bash
+crontab -e
+```
+Add the following line to run the renewal script on the 1st of every month at midnight:
+```bash
+0 0 1 * * /home/xflow/quantum-team/quantum-website-conf/NGINX/renew_certs.sh >> /var/log/ssl_renewal.log 2>&1
+```
+*(The script is smart enough to only renew the certificate if Let's Encrypt determines it is within 30 days of expiring, otherwise it gracefully exits without doing anything).*
 
 ```mermaid
 sequenceDiagram
@@ -89,9 +175,11 @@ NGINX routes requests based on location blocks:
 - `/ws`: Explicitly proxies WebSocket connections necessary for the MLKEM frontend to communicate with the backend. It uses HTTP `Upgrade` headers to keep the WebSocket connection alive.
 - **Networking:** NGINX uses `host.docker.internal` to route traffic to the application containers (which have their specific internal ports exposed, e.g., `9092` for the frontend).
 
+---
+
 ## Scalability: How to Add a New Application
 
-When the team develops a new application (e.g., a new quantum simulation tool), follow these steps to expose it securely to the public through the existing NGINX proxy:
+When the team develops a new application (e.g., a new quantum simulation tool), developers can easily expose it securely to the public through the existing NGINX proxy by following these steps:
 
 ### Step 1: Run the New Application
 Deploy your new application using Docker. Ensure it exposes a unique internal port on the host machine.
