@@ -1,0 +1,11 @@
+HTTP/2 200 
+server: nginx
+date: Wed, 15 Jul 2026 10:28:51 GMT
+content-type: application/json
+content-length: 101
+cache-control: public, max-age=0, no-cache
+link: <https://acme-v02.api.letsencrypt.org/directory>;rel="index"
+retry-after: 23725
+x-frame-options: DENY
+strict-transport-security: max-age=604800
+

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classic McEliece</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --bg:#0a1626;
+        --grid-line: rgba(101,168,209,0.07);
+        --panel:#0f2137;
+        --panel-alt:#0c1b2d;
+        --line:#25415e;
+        --ink:#dce9f6;
+        --ink-dim:#7fa1c2;
+        --ink-faint:#4e6d8c;
+        --gold:#e8b34d;
+        --teal:#5fd6c2;
+        --violet:#9b93e8;
+        --coral:#e2735b;
+        --mono:'IBM Plex Mono', ui-monospace, monospace;
+        --sans:'IBM Plex Sans', system-ui, sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body{
+        background:
+            repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 32px),
+            var(--bg);
+        font-family:var(--sans);
+        color:var(--ink);
+        display:flex; justify-content:center;
+        padding:2.4rem 1rem 0.5rem;
+    }
+    .sheet{
+        max-width:980px; width:100%;
+        background:linear-gradient(180deg, rgba(15,33,55,0.55), rgba(15,33,55,0.85));
+        border:1px solid var(--line);
+        border-radius:0.6rem;
+        position:relative;
+        box-shadow:0 40px 80px -30px rgba(0,0,0,0.85);
+    }
+    .sheet::before, .sheet::after { content:''; position:absolute; width:18px; height:18px; border:1px solid var(--gold); opacity:0.6; }
+    .sheet::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+    .sheet::after{ top:-1px; right:-1px; border-left:none; border-bottom:none; }
+    .corner-bl, .corner-br { position:absolute; width:18px; height:18px; border:1px solid var(--gold); opacity:0.6; bottom:-1px; }
+    .corner-bl{ left:-1px; border-right:none; border-top:none; }
+    .corner-br{ right:-1px; border-left:none; border-top:none; }
+
+    /* ---- title block ---- */
+    .title-block{
+        padding:2rem 2.2rem 1.4rem;
+        border-bottom:1px solid var(--line);
+        display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;
+    }
+    .title-block h1{
+        font-family:var(--mono); font-weight:600; font-size:1.55rem; color:#f2f7fc;
+        letter-spacing:-0.01em;
+    }
+    .title-block .sub{ color:var(--ink-dim); font-size:0.85rem; margin-top:0.35rem; }
+    .spec-tag{
+        font-family:var(--mono); font-size:0.7rem; color:var(--gold);
+        border:1px solid #4a3a1c; background:#1d1608; padding:0.35rem 0.7rem; border-radius:4px;
+        letter-spacing:0.03em; white-space:nowrap;
+    }
+
+    /* ---- sticky index ---- */
+    .index{
+        display:flex; flex-wrap:wrap; gap:0.4rem 0.9rem;
+        padding:0.9rem 2.2rem; border-bottom:1px solid var(--line);
+        background:var(--panel-alt); font-family:var(--mono); font-size:0.72rem;
+        position:sticky; top:0; z-index:5; border-radius:0.6rem 0.6rem 0 0;
+    }
+    .index a{ color:var(--ink-dim); text-decoration:none; }
+    .index a:hover{ color:var(--teal); }
+    .index span.sep{ color:var(--ink-faint); }
+
+    section{ padding:2rem 2.2rem; border-bottom:1px solid var(--line); }
+    section:last-of-type{ border-bottom:none; }
+    .eyebrow{
+        font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.12em;
+        color:var(--ink-faint); margin-bottom:0.5rem;
+    }
+    h2{ font-family:var(--mono); font-size:1.15rem; color:#eef4fa; font-weight:600; margin-bottom:0.9rem; }
+    p.lede{ color:var(--ink-dim); font-size:0.92rem; line-height:1.65; max-width:70ch; }
+
+    /* ---- story panel ---- */
+    .story-panel{
+        background:var(--panel); border:1px solid var(--line); border-radius:0.8rem;
+        padding:1.4rem 1.6rem; display:flex; gap:1.1rem; align-items:flex-start;
+    }
+    .story-panel .glyph{ font-size:1.6rem; line-height:1; }
+    .story-panel p{ color:#c7d9ed; font-size:0.94rem; line-height:1.75; }
+    .story-panel p + p{ margin-top:0.6rem; }
+    .story-panel .hl{ color:var(--gold); font-weight:600; }
+    .story-panel .ok{ color:var(--teal); font-weight:600; }
+    .story-panel .err{ color:var(--coral); font-weight:600; }
+
+    /* ---- capsule diagram ---- */
+    .capsule-wrap{ display:flex; justify-content:center; padding:0.6rem 0 0.4rem; }
+    .capsule-caption{ text-align:center; color:var(--ink-faint); font-size:0.75rem; font-family:var(--mono); margin-top:0.6rem; }
+
+    /* ---- mapping table ---- */
+    table.map{ width:100%; border-collapse:collapse; font-size:0.86rem; }
+    table.map th{
+        font-family:var(--mono); text-transform:uppercase; letter-spacing:0.05em; font-size:0.68rem;
+        color:var(--ink-faint); text-align:left; padding:0.5rem 0.8rem; border-bottom:1px solid var(--line);
+    }
+    table.map td{ padding:0.6rem 0.8rem; border-bottom:1px solid #1a2e44; color:#c7d9ed; }
+    table.map tr:last-child td{ border-bottom:none; }
+    table.map .real{ font-family:var(--mono); color:var(--teal); }
+
+    /* ---- process steps ---- */
+    .proc-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+    @media (max-width:800px){ .proc-grid{ grid-template-columns:1fr; } }
+    .proc-card{
+        background:var(--panel-alt); border:1px solid var(--line); border-radius:0.7rem; padding:1.1rem 1.2rem;
+    }
+    .proc-card .ptitle{ font-family:var(--mono); font-size:0.82rem; color:var(--gold); margin-bottom:0.6rem; font-weight:600; }
+    .proc-card ol, .proc-card ul{ padding-left:1.1rem; color:#b9cfe6; font-size:0.83rem; line-height:1.65; }
+    .proc-card ol li + li, .proc-card ul li + li{ margin-top:0.35rem; }
+    .proc-card code{ font-family:var(--mono); color:var(--teal); font-size:0.8rem; }
+
+    .callout{
+        margin-top:1.1rem; background:#1d1608; border:1px solid #4a3a1c; border-radius:0.7rem;
+        padding:1rem 1.2rem; display:flex; gap:0.8rem; align-items:flex-start;
+    }
+    .callout .glyph{ font-size:1.2rem; }
+    .callout p{ color:#e6cf9a; font-size:0.86rem; line-height:1.6; }
+
+    /* ---- kem flow ---- */
+    .kem-flow{ display:flex; flex-direction:column; gap:0.5rem; }
+    .kem-row{
+        display:flex; align-items:center; gap:0.9rem;
+        background:var(--panel-alt); border:1px solid var(--line); border-radius:0.6rem; padding:0.7rem 1rem;
+        font-size:0.84rem;
+    }
+    .kem-row .n{ font-family:var(--mono); color:var(--violet); font-size:0.78rem; min-width:1.4rem; }
+    .kem-row .fail{ color:var(--coral); font-family:var(--mono); font-size:0.76rem; margin-left:auto; }
+
+    /* ---- tables ---- */
+    table.data{ width:100%; border-collapse:collapse; font-size:0.83rem; }
+    table.data th{
+        font-family:var(--mono); text-align:right; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+        color:var(--ink-faint); padding:0.55rem 0.7rem; border-bottom:1px solid var(--line);
+    }
+    table.data th:first-child{ text-align:left; }
+    table.data td{ text-align:right; padding:0.55rem 0.7rem; border-bottom:1px solid #1a2e44; font-family:var(--mono); color:#c7d9ed; }
+    table.data td:first-child{ text-align:left; font-family:var(--sans); color:var(--ink); }
+    table.data tr:last-child td{ border-bottom:none; }
+    .cat1{color:#8fd6ff;} .cat3{color:var(--teal);} .cat5{color:var(--gold);}
+
+    /* ---- bar viz ---- */
+    .bar-block{ margin-top:1.3rem; }
+    .bar-row{ display:grid; grid-template-columns:110px 1fr 100px; align-items:center; gap:0.8rem; margin-bottom:0.55rem; }
+    .bar-row .lab{ font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); }
+    .bar-track{ background:#0c1826; border:1px solid var(--line); border-radius:20px; height:10px; overflow:hidden; }
+    .bar-fill{ height:100%; border-radius:20px; }
+    .bar-row .val{ font-family:var(--mono); font-size:0.72rem; color:var(--ink-faint); text-align:right; }
+    .fill-public{ background:linear-gradient(90deg, var(--gold), #b8842f); }
+    .fill-private{ background:linear-gradient(90deg, var(--violet), #6b63c2); }
+    .fill-cipher{ background:linear-gradient(90deg, var(--teal), #2e9683); }
+    .fill-keygen{ background:linear-gradient(90deg, var(--coral), #a8422e); }
+    .fill-enc{ background:linear-gradient(90deg, var(--teal), #2e9683); }
+    .fill-dec{ background:linear-gradient(90deg, var(--gold), #b8842f); }
+    .scale-note{ font-family:var(--mono); font-size:0.68rem; color:var(--ink-faint); margin-top:0.4rem; }
+
+    footer{ padding:1.6rem 2.2rem 2rem; text-align:center; color:var(--ink-faint); font-size:0.78rem; font-family:var(--mono); }
+</style>
+</head>
+<body>
+<div class="sheet">
+    <div class="corner-bl"></div><div class="corner-br"></div>
+
+    <div class="title-block">
+        <div>
+            <h1>CLASSIC McELIECE</h1>
+            <div class="sub">Part 1 of 3 · plain-language model + the real spec underneath it</div>
+        </div>
+        <a href="https://www.etsi.org/deliver/etsi_tr/103800_103899/103823/01.01.01_60/tr_103823v010101p.pdf" target="_blank" class="spec-tag" style="text-decoration:none; cursor:pointer;" title="Open ETSI TR 103 823 PDF">SRC: ETSI TR 103 823 ↗</a>
+    </div>
+
+    <nav class="index">
+        <a href="#history">01 Origins</a><span class="sep">/</span>
+        <a href="#definitions">02 Definitions</a><span class="sep">/</span>
+        <a href="#story">03 The idea</a><span class="sep">/</span>
+        <a href="#mapping">04 Term map</a><span class="sep">/</span>
+        <a href="#pke">05 The PKE</a><span class="sep">/</span>
+        <a href="#capsule">06 Two layers</a><span class="sep">/</span>
+        <a href="#kem">07 The KEM wrapper</a><span class="sep">/</span>
+        <a href="#params">08 Parameter sets</a><span class="sep">/</span>
+        <a href="#sizes">09 Sizes</a><span class="sep">/</span>
+        <a href="#security">10 Security</a><span class="sep">/</span>
+        <a href="#perf">11 Performance</a>
+    </nav>
+
+    <section id="history">
+        <div class="eyebrow">01 · Origins</div>
+        <h2>A scheme from 1978</h2>
+        <p class="lede">Classic McEliece is based on a public-key cryptosystem developed by Robert J. McEliece in 1978. First published in a short paper titled <a href="https://tda.jpl.nasa.gov/progress_report/42-44/44N.PDF" target="_blank" style="color:var(--teal); text-decoration:none;">"A Public-Key Cryptosystem Based on Algebraic Coding Theory"</a> for NASA's Jet Propulsion Laboratory, it is one of the oldest known public-key encryption schemes. Unlike RSA (published around the same time), McEliece's scheme has never been broken by quantum algorithms, making it a leading candidate for post-quantum cryptography today.</p>
+    </section>
+
+    <section id="definitions">
+        <div class="eyebrow">02 · Core definitions</div>
+        <h2>Key concepts</h2>
+        <p class="lede" style="margin-bottom:1.2rem;">Some of the advanced cryptographic jargon you'll encounter throughout this walkthrough, simplified:</p>
+        <div class="proc-grid" style="margin-bottom:2rem;">
+            <div class="proc-card">
+                <div class="ptitle">Security Models</div>
+                <ul>
+                    <li><strong>OW-CPA Secure</strong>: "One-Way Chosen Plaintext Attack". An attacker can encrypt messages but can't reverse the math to decrypt them. However, they might be able to tamper with the ciphertext in transit. (The inner layer).</li>
+                    <li><strong>CCA Secure</strong>: "Chosen Ciphertext Attack". The gold standard. An attacker can't decrypt, and if they try to tamper with the ciphertext, the receiver will instantly detect it and reject the message. (The outer layer).</li>
+                </ul>
+            </div>
+            <div class="proc-card">
+                <div class="ptitle">The FO Transform</div>
+                <ul>
+                    <li><strong>Fujisaki-Okamoto Transform</strong>: A clever mathematical wrapper. It takes a scheme that is only OW-CPA secure (weak against tampering) and upgrades it to be fully CCA secure. It does this by forcing the receiver to re-encrypt the decrypted message and check if it matches the original ciphertext.</li>
+                </ul>
+            </div>
+            <div class="proc-card">
+                <div class="ptitle">The Math Foundation</div>
+                <ul>
+                    <li><strong>Binary Goppa Code</strong>: A type of error-correcting code used in telecommunications to fix static or noise in transmissions. McEliece cleverly turns this into cryptography by adding "noise" (errors) on purpose, which only the private key holder can correct.</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>The formal entities</h2>
+        <p class="lede" style="margin-bottom:1.2rem;">Before diving into analogies, here are the formal mathematical entities that power the McEliece scheme. These exact terms will appear in the Step-by-Step Demo (Part 3).</p>
+        <div class="proc-grid">
+            <div class="proc-card">
+                <div class="ptitle">Private Elements</div>
+                <ul>
+                    <li><strong>g(X)</strong>: A random irreducible polynomial (degree <em>t</em>). This is the core secret trapdoor.</li>
+                    <li><strong>α (Alpha)</strong>: A sequence of <em>n</em> distinct elements from a finite field. These act as "secret addresses".</li>
+                    <li>Together, <code>g(X)</code> and <code>α</code> form the private key, allowing efficient error correction.</li>
+                </ul>
+            </div>
+            <div class="proc-card">
+                <div class="ptitle">Public Matrix</div>
+                <ul>
+                    <li><strong>H</strong>: The public parity-check matrix. It's a scrambled version of a private matrix.</li>
+                    <li>The sender uses <code>H</code> to encrypt their message. Without the private key, <code>H</code> looks completely random and is computationally useless for decoding.</li>
+                </ul>
+            </div>
+            <div class="proc-card">
+                <div class="ptitle">Vectors &amp; Ciphertext</div>
+                <ul>
+                    <li><strong>c</strong>: A valid plaintext codeword. Appears in <strong>Part 3 · Step 4 · Stage A</strong> as <code>c = [3, 6, 1, 0]</code>.</li>
+                    <li><strong>e</strong>: An error vector containing exactly <em>t</em> errors. Appears in <strong>Part 3 · Step 4 · Stage B</strong> as <code>e = [1, 0, 1, 0]</code>.</li>
+                    <li><strong>y = c + e (mod 7)</strong>: The corrupted ciphertext. Called <code>y = c ⊕ e</code> in binary schemes — same idea, just addition mod 7 in the demo. Appears in <strong>Part 3 · Step 4 · Stage B</strong> as the transmitted vector.</li>
+                    <li><strong>s = H·yᵀ</strong>: The syndrome. Used by the receiver to locate the errors. Appears in <strong>Part 3 · Step 4 · Stage C</strong> and is the <code>C₀</code> input to <code>PKE.Dec</code> in Step 6.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="story">
+        <div class="eyebrow">03 · The idea, in one story</div>
+        <h2>🎂 The glitter-and-vacuum trick</h2>
+        <div class="story-panel">
+            <div class="glyph">🧁</div>
+            <div>
+                <p>You want to mail a secret recipe. So you sprinkle it with a very <span class="hl">specific, deliberate pattern of glitter</span> enough to make it unreadable to anyone who intercepts it.</p>
+                <p>Before you ever mailed anything, you secretly gave your friend a <span class="ok">custom vacuum</span> built for exactly that glitter pattern. They run it once and the recipe reappears instantly.</p>
+                <p>A snoop with no vacuum has to <span class="err">guess</span>, speck by speck, which parts are glitter and at real-world scale, that guess is computationally hopeless.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="mapping">
+        <div class="eyebrow">04 · Story terms → spec terms</div>
+        <h2>How the analogy maps to the real notation</h2>
+        <table class="map">
+            <tr><th>Story</th><th>Spec object</th><th>Role</th></tr>
+            <tr><td>Your secret glitter recipe</td><td class="real">g(X), α</td><td>Irreducible polynomial + n distinct field elements (the private key)</td></tr>
+            <tr><td>The scrambled public mailbox spec</td><td class="real">H (or H′)</td><td>Public parity-check matrix, published openly</td></tr>
+            <tr><td>The custom vacuum</td><td class="real">Goppa decoding algorithm</td><td>Only works because it knows g(X), α</td></tr>
+            <tr><td>The glitter itself</td><td class="real">e (weight t)</td><td>Random error vector added on purpose</td></tr>
+            <tr><td>The glittery card that gets mailed</td><td class="real">c = H·eᵀ</td><td>Ciphertext the syndrome, not the message directly</td></tr>
+            <tr><td>Snoop's impossible guessing game</td><td class="real">Information Set Decoding</td><td>Best known generic attack</td></tr>
+        </table>
+    </section>
+
+    <section id="pke">
+        <div class="eyebrow">05 · Inner layer</div>
+        <h2>McEliece.PKE : the trapdoor itself</h2>
+
+        <!-- Abbreviation legend -->
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1.4rem;">
+            <div style="background:#0f2137; border:1px solid #25415e; border-radius:6px; padding:0.35rem 0.8rem; font-family:var(--mono); font-size:0.75rem;">
+                <span style="color:var(--teal); font-weight:700;">PK</span> <span style="color:var(--ink-dim);">= Public Key</span> <span style="color:var(--ink-faint);">— shared openly, anyone can encrypt</span>
+            </div>
+            <div style="background:#0f2137; border:1px solid #25415e; border-radius:6px; padding:0.35rem 0.8rem; font-family:var(--mono); font-size:0.75rem;">
+                <span style="color:var(--violet); font-weight:700;">SK</span> <span style="color:var(--ink-dim);">= Secret Key</span> <span style="color:var(--ink-faint);">— kept private, only the owner can decrypt</span>
+            </div>
+        </div>
+
+        <p class="lede" style="margin-bottom:1.3rem;">This layer is the raw mathematical trapdoor — the "glitter trick" from Section 03. It has three operations: making the keys, locking data, and unlocking data.</p>
+
+        <div class="proc-grid">
+            <!-- KeyGen -->
+            <div class="proc-card">
+                <div class="ptitle">① KeyGen() — Making the keys</div>
+                <p style="color:var(--ink-dim); font-size:0.82rem; line-height:1.6; margin-bottom:0.7rem;">The owner runs this once, in private, to create their key pair.</p>
+                <ol>
+                    <li><strong>Pick the secret recipe</strong> — choose a random irreducible polynomial <code>g(X)</code> and a list of secret positions <code>α₁…αₙ</code>. Together these form the <span style="color:var(--violet);">SK (Secret Key)</span>.</li>
+                    <li><strong>Build a private cheat-sheet</strong> — use <code>g(X)</code> and <code>α</code> to construct a private error-correcting matrix.</li>
+                    <li><strong>Scramble it</strong> — mathematically shuffle the matrix until it looks random to anyone who doesn't know the recipe. The result is the <span style="color:var(--teal);">PK (Public Key)</span> <code>H′</code>.</li>
+                    <li><strong>Publish H′</strong> — anyone can now use it to send a locked message. (If the scrambling step fails, just restart — this is a known quirk of the scheme.)</li>
+                </ol>
+            </div>
+
+            <!-- Enc -->
+            <div class="proc-card">
+                <div class="ptitle">② Enc(<span style="color:var(--teal);">pk</span>, e) — Locking</div>
+                <p style="color:var(--ink-dim); font-size:0.82rem; line-height:1.6; margin-bottom:0.7rem;">The <em>sender</em> runs this using only the public key. No secret needed.</p>
+                <ol>
+                    <li><strong>Load the public cheat-sheet</strong> — read the published <span style="color:var(--teal);">PK</span> <code>H′</code> and reconstruct the full matrix <code>H</code>.</li>
+                    <li><strong>Choose the glitter</strong> — pick a random error vector <code>e</code>: a pattern of deliberate "mistakes" to add to the data.</li>
+                    <li><strong>Lock it</strong> — compute <code>c = H · eᵀ</code>. This mixes the glitter pattern with the public cheat-sheet in a way that's easy to do but nearly impossible to undo without the secret recipe.</li>
+                    <li><strong>Send c</strong> — the locked output (ciphertext) is transmitted. The glitter pattern <code>e</code> stays secret.</li>
+                </ol>
+            </div>
+
+            <!-- Dec -->
+            <div class="proc-card">
+                <div class="ptitle">③ Dec(<span style="color:var(--violet);">sk</span>, c) — Unlocking</div>
+                <p style="color:var(--ink-dim); font-size:0.82rem; line-height:1.6; margin-bottom:0.7rem;">Only the owner can run this, because only they have the <span style="color:var(--violet);">SK</span>.</p>
+                <ol>
+                    <li><strong>Expand the ciphertext</strong> — pad <code>c</code> into the full n-bit format the decoder expects.</li>
+                    <li><strong>Run the vacuum</strong> — use the secret recipe (<code>g(X)</code>, <code>α</code>) to run the Goppa error-correcting algorithm. It finds and removes the hidden glitter pattern.</li>
+                    <li><strong>Recover e</strong> — the exact error vector the sender chose is revealed.</li>
+                    <li><strong>If no match, signal failure (⊥)</strong> — if the data is too corrupted or was tampered with, no valid pattern exists and decryption cleanly fails rather than producing garbage.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="callout">
+            <div class="glyph">💡</div>
+            <p><strong>Why does this encrypt a glitter pattern (e) instead of the actual message?</strong> Because the math only supports hiding short error vectors — not arbitrary messages. The outer layer (Section 07) solves this: it uses <code>e</code> as a shared secret to derive a full encryption key, which is then used to encrypt any message you like.</p>
+        </div>
+    </section>
+
+    <section id="capsule">
+        <div class="eyebrow">06 · What the spec actually builds</div>
+        <h2>Two layers, wrapped around each other in a "Russian Doll" Design</h2>
+        <p class="lede" style="margin-bottom:1.5rem;">Classic McEliece doesn't just use the math trapdoor directly. It wraps the trapdoor inside a strict security checkpoint. Think of it like a vault inside a highly secure room.</p>
+
+        <div style="background:var(--panel); border:2px dashed var(--violet); border-radius:1rem; padding:1.5rem;">
+            <div style="color:var(--violet); font-family:var(--mono); font-size:0.8rem; letter-spacing:0.05em; margin-bottom:1rem; font-weight:600;">OUTER LAYER: THE KEM CHECKPOINT (CCA Secure)</div>
+            <p style="color:var(--ink-dim); font-size:0.9rem; line-height:1.6; margin-bottom:1.5rem;">This layer doesn't do the encryption itself. Instead, it carefully checks if the person sending the message actually followed the rules, preventing attackers from tricking the system with corrupted data.</p>
+            
+            <div style="background:#0a1626; border:1px solid var(--teal); border-radius:0.7rem; padding:1.2rem;">
+                <div style="color:var(--teal); font-family:var(--mono); font-size:0.8rem; letter-spacing:0.05em; margin-bottom:0.8rem; font-weight:600;">INNER LAYER: THE PKE TRAPDOOR (OW-CPA Secure)</div>
+                <p style="color:var(--ink-dim); font-size:0.9rem; line-height:1.6; margin-bottom:1rem;">This is the raw McEliece math (the glitter trick). It's incredibly hard to break by guessing, but on its own, it's vulnerable to tampering.</p>
+
+                <div style="background:#1d1608; border:1px solid #4a3a1c; border-radius:0.5rem; padding:0.8rem; text-align:center;">
+                    <strong style="color:var(--gold); font-family:var(--mono);">The Secret Key (g(X), α)</strong>
+                    <div style="color:#e6cf9a; font-size:0.8rem; margin-top:0.3rem;">The Goppa-code math at the very center</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="kem">
+        <div class="eyebrow">07 · Outer layer</div>
+        <h2>How the Security Checkpoint works</h2>
+        <p class="lede" style="margin-bottom:1.5rem;">The outer layer uses the Fujisaki-Okamoto Transform. Its entire job is to agree on a shared Session Key without an attacker manipulating the process.</p>
+
+        <div class="grid-2col" style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem;">
+            <!-- Sender -->
+            <div style="background:var(--panel-alt); border:1px solid var(--line); border-radius:0.8rem; padding:1.4rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+                    <span style="font-size:1.5rem;">📤</span>
+                    <h3 style="font-family:var(--mono); color:var(--teal); font-size:1rem;">Sender's Job</h3>
+                </div>
+                <ul style="padding-left:1.2rem; color:#b9cfe6; font-size:0.9rem; line-height:1.7;">
+                    <li><strong>Pick a secret</strong>: Choose a random error vector (the glitter).</li>
+                    <li><strong>Lock it up</strong>: Encrypt the secret using the Inner PKE layer.</li>
+                    <li><strong>Take a fingerprint</strong>: Create a digital fingerprint (Hash) of the secret.</li>
+                    <li><strong>Send them both</strong>: Transmit the locked secret and the fingerprint to the receiver.</li>
+                </ul>
+            </div>
+
+            <!-- Receiver -->
+            <div style="background:var(--panel-alt); border:1px solid var(--line); border-radius:0.8rem; padding:1.4rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+                    <span style="font-size:1.5rem;">📥</span>
+                    <h3 style="font-family:var(--mono); color:var(--violet); font-size:1rem;">Receiver's Checkpoint</h3>
+                </div>
+                <ul style="padding-left:1.2rem; color:#b9cfe6; font-size:0.9rem; line-height:1.7;">
+                    <li><strong>Unlock it</strong>: Use the private key to decode and reveal the secret.</li>
+                    <li><strong>Check the lock</strong>: Re-encrypt the secret. Does it perfectly match the locked version sent by the sender?</li>
+                    <li><strong>Check the fingerprint</strong>: Hash the secret. Does it perfectly match the sender's fingerprint?</li>
+                    <li style="margin-top:0.4rem;"><strong>Derive the key</strong>: If everything matches, generate a shared Session Key. If a check fails, quietly generate a fake key instead of returning an error.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="callout">
+            <div class="glyph">🛡️</div>
+            <p><strong>The Genius Move</strong>: By generating a fake key instead of returning a "Decryption Failed" error, the system gives the attacker zero feedback. The attacker cannot tell if they guessed wrong or if the system rejected their tampered message, making chosen-ciphertext attacks impossible.</p>
+        </div>
+    </section>
+
+    <section id="params">
+        <div class="eyebrow">08 · Table 3</div>
+        <h2>Standardized parameter sets</h2>
+        <table class="data">
+            <tr><th>Set</th><th>Extension Degree (m)</th><th>Code Length (n)</th><th>Error Weight (t)</th><th>Claimed security</th></tr>
+            <tr><td>mceliece348864</td><td>12</td><td>3,488</td><td>64</td><td class="cat1">Category 1</td></tr>
+            <tr><td>mceliece460896</td><td>13</td><td>4,608</td><td>96</td><td class="cat3">Category 3</td></tr>
+            <tr><td>mceliece6960119</td><td>13</td><td>6,960</td><td>119</td><td class="cat5">Category 5</td></tr>
+            <tr><td>mceliece6688128</td><td>13</td><td>6,688</td><td>128</td><td class="cat5">Category 5</td></tr>
+            <tr><td>mceliece8192128</td><td>13</td><td>8,192</td><td>128</td><td class="cat5">Category 5</td></tr>
+        </table>
+    </section>
+
+    <section id="sizes">
+        <div class="eyebrow">09 · Table 4</div>
+        <h2>Key &amp; ciphertext sizes</h2>
+        <table class="data">
+            <tr><th>Set</th><th>Public key</th><th>Private key</th><th>Ciphertext</th></tr>
+            <tr><td>mceliece348864</td><td>261,120 B</td><td>6,452 B</td><td>128 B</td></tr>
+            <tr><td>mceliece460896</td><td>524,160 B</td><td>13,568 B</td><td>188 B</td></tr>
+            <tr><td>mceliece6960119</td><td>1,044,992 B</td><td>13,892 B</td><td>240 B</td></tr>
+            <tr><td>mceliece6688128</td><td>1,047,319 B</td><td>13,908 B</td><td>226 B</td></tr>
+            <tr><td>mceliece8192128</td><td>1,357,824 B</td><td>14,080 B</td><td>240 B</td></tr>
+        </table>
+
+        <div class="bar-block">
+            <div class="bar-row">
+                <div class="lab">Public key</div>
+                <div class="bar-track"><div class="bar-fill fill-public" style="width:100%;"></div></div>
+                <div class="val">1,044,992 B</div>
+            </div>
+            <div class="bar-row">
+                <div class="lab">Private key</div>
+                <div class="bar-track"><div class="bar-fill fill-private" style="width:68.8%;"></div></div>
+                <div class="val">13,892 B</div>
+            </div>
+            <div class="bar-row">
+                <div class="lab">Ciphertext</div>
+                <div class="bar-track"><div class="bar-fill fill-cipher" style="width:39.5%;"></div></div>
+                <div class="val">240 B</div>
+            </div>
+        </div>
+        <div class="scale-note">bars scaled by log₁₀(bytes) — mceliece6960119 · linearly, the ciphertext bar would be invisible next to the public key</div>
+    </section>
+
+    <section id="security">
+        <div class="eyebrow">10 · Table 5</div>
+        <h2>Estimated classical security (message recovery)</h2>
+        <table class="data">
+            <tr><th>Set</th><th>Bits of security</th></tr>
+            <tr><td>mceliece348864</td><td>140</td></tr>
+            <tr><td>mceliece460896</td><td>181</td></tr>
+            <tr><td>mceliece6688128</td><td>257</td></tr>
+            <tr><td>mceliece6960119</td><td>258</td></tr>
+            <tr><td>mceliece8192128</td><td>294</td></tr>
+        </table>
+        <p class="lede" style="margin-top:0.9rem;">Estimated against information-set-decoding attacks (the formal name for the snoop's brute-force guessing game). Key-recovery attacks aren't costed separately, since they're believed to be strictly harder than message recovery.</p>
+    </section>
+
+    <section id="perf">
+        <div class="eyebrow">11 · Table 6</div>
+        <h2>Performance</h2>
+        <p class="lede" style="margin-bottom:1rem;">Figures for mceliece348864 (systematic), single core, 3.5 GHz Xeon E3-1275 v3.</p>
+        <div class="bar-block">
+            <div class="bar-row">
+                <div class="lab">KeyGen</div>
+                <div class="bar-track"><div class="bar-fill fill-keygen" style="width:100%;"></div></div>
+                <div class="val">58.0M cyc</div>
+            </div>
+            <div class="bar-row">
+                <div class="lab">Enc</div>
+                <div class="bar-track"><div class="bar-fill fill-enc" style="width:59.9%;"></div></div>
+                <div class="val">44.3K cyc</div>
+            </div>
+            <div class="bar-row">
+                <div class="lab">Dec</div>
+                <div class="bar-track"><div class="bar-fill fill-dec" style="width:66.1%;"></div></div>
+                <div class="val">134.7K cyc</div>
+            </div>
+        </div>
+        <div class="scale-note">bars scaled by log₁₀(cycles), KeyGen is ~3 orders of magnitude slower than Enc/Dec, matching "hard to build the trapdoor, cheap to use it"</div>
+    </section>
+
+</div>
+
+<script>
+  // ── Height reporting ──────────────────────────────────────────────
+  function sendHeight() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      window.parent.postMessage({
+        type: 'resize',
+        id: id,
+        height: document.documentElement.scrollHeight
+      }, '*');
+    }
+  }
+  window.addEventListener('load', sendHeight);
+  new ResizeObserver(sendHeight).observe(document.body);
+
+  // ── Helper: send scroll-to offset to parent ───────────────────────
+  function scrollParentTo(sectionId) {
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+    const params = new URLSearchParams(window.location.search);
+    const frameId = params.get('id') || 'frame1';
+    window.parent.postMessage({
+      type: 'scrollTo',
+      id: frameId,
+      offset: target.offsetTop
+    }, '*');
+  }
+
+  // ── Fix sticky-nav anchor clicks (broken inside iframe) ───────────
+  document.querySelectorAll('.index a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const targetId = this.getAttribute('href').replace('#', '');
+      scrollParentTo(targetId);
+    });
+  });
+
+  // ── Listen for scrollToSection messages from index.html nav ───────
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'scrollToSection') {
+      scrollParentTo(e.data.id);
+    }
+  });
+</script>
+</body>
+</html>

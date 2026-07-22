@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classic McEliece — Pipeline Schematic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --bg:#0a1626;
+        --grid-line: rgba(101,168,209,0.07);
+        --panel:#0f2137;
+        --panel-alt:#0c1b2d;
+        --line:#25415e;
+        --ink:#dce9f6;
+        --ink-dim:#7fa1c2;
+        --ink-faint:#4e6d8c;
+        --gold:#e8b34d;
+        --teal:#5fd6c2;
+        --violet:#9b93e8;
+        --coral:#e2735b;
+        --mono:'IBM Plex Mono', ui-monospace, monospace;
+        --sans:'IBM Plex Sans', system-ui, sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body{
+        background:
+            repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 32px),
+            var(--bg);
+        font-family:var(--sans);
+        color:var(--ink);
+        display:flex; justify-content:center;
+        padding:0.5rem 1rem 0.5rem;
+    }
+    .sheet{
+        max-width:1040px; width:100%;
+        background:linear-gradient(180deg, rgba(15,33,55,0.55), rgba(15,33,55,0.85));
+        border:1px solid var(--line);
+        border-radius:0.6rem;
+        position:relative;
+        box-shadow:0 40px 80px -30px rgba(0,0,0,0.85);
+    }
+    .sheet::before, .sheet::after { content:''; position:absolute; width:18px; height:18px; border:1px solid var(--gold); opacity:0.6; }
+    .sheet::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+    .sheet::after{ top:-1px; right:-1px; border-left:none; border-bottom:none; }
+    .corner-bl, .corner-br { position:absolute; width:18px; height:18px; border:1px solid var(--gold); opacity:0.6; bottom:-1px; }
+    .corner-bl{ left:-1px; border-right:none; border-top:none; }
+    .corner-br{ right:-1px; border-left:none; border-top:none; }
+
+    .title-block{
+        padding:2rem 2.2rem 1.4rem;
+        border-bottom:1px solid var(--line);
+        display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;
+    }
+    .title-block h1{ font-family:var(--mono); font-weight:600; font-size:1.55rem; color:#f2f7fc; letter-spacing:-0.01em; }
+    .title-block .sub{ color:var(--ink-dim); font-size:0.85rem; margin-top:0.35rem; }
+    .spec-tag{
+        font-family:var(--mono); font-size:0.7rem; color:var(--gold);
+        border:1px solid #4a3a1c; background:#1d1608; padding:0.35rem 0.7rem; border-radius:4px;
+        letter-spacing:0.03em; white-space:nowrap;
+    }
+
+    .legend-bar{
+        display:flex; flex-wrap:wrap; gap:1.1rem;
+        padding:0.85rem 2.2rem; border-bottom:1px solid var(--line);
+        background:var(--panel-alt); font-family:var(--mono); font-size:0.72rem;
+        position:sticky; top:0; z-index:5; border-radius:0.6rem 0.6rem 0 0;
+        align-items:center;
+    }
+    .legend-bar .item{ display:flex; align-items:center; gap:0.4rem; color:var(--ink-dim); }
+    .legend-bar .dot{ width:9px; height:9px; border-radius:2px; }
+    .dot.owner{ background:var(--gold); } .dot.kem{ background:var(--violet); }
+    .dot.attacker{ background:var(--coral); } .dot.receiver{ background:var(--teal); }
+
+    .flow{ padding:2.2rem 2.2rem 1rem; display:flex; flex-direction:column; align-items:center; }
+
+    .layer-frame{
+        width:100%; max-width:760px; border:1.5px dashed var(--violet); border-radius:1.4rem;
+        padding:1.6rem 1.6rem 1.4rem; position:relative; margin-bottom:0.3rem;
+    }
+    .layer-frame .frame-tag{
+        position:absolute; top:-11px; left:1.4rem; background:var(--bg);
+        font-family:var(--mono); font-size:0.68rem; color:var(--violet);
+        letter-spacing:0.08em; padding:0 0.5rem;
+    }
+    .layer-frame.inner{ border-color:var(--teal); }
+    .layer-frame.inner .frame-tag{ color:var(--teal); }
+
+    .node{
+        width:100%; background:var(--panel); border:1px solid var(--line); border-radius:0.9rem;
+        padding:1rem 1.3rem; margin:0.28rem 0;
+    }
+    .node .step-no{ font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); margin-bottom:0.3rem; }
+    .node .title{ font-family:var(--mono); font-size:0.98rem; font-weight:600; color:#eef4fa; display:flex; align-items:center; gap:0.55rem; }
+    .node .desc{ font-size:0.85rem; color:var(--ink-dim); margin-top:0.4rem; line-height:1.6; }
+    .node code{ font-family:var(--mono); color:var(--gold); font-size:0.85rem; }
+    .node.owner{ border-color:#4a3a1c; }
+
+    .arrow-down{ color:#3d5a78; font-size:1.4rem; padding:0.1rem 0; user-select:none; width:100%; text-align:center; display:block; }
+
+    .split-label{
+        margin:0.7rem 0 0.9rem; padding:0.45rem 1.2rem;
+        background:var(--panel-alt); border:1px dashed var(--ink-faint); border-radius:40px;
+        color:var(--ink-dim); font-size:0.82rem; text-align:center; font-family:var(--mono);
+    }
+
+    .split-wrap{
+        display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;
+        width:100%; max-width:900px; margin-top:0.3rem; align-items:start;
+    }
+    @media (max-width:760px){ .split-wrap{ grid-template-columns:1fr; } }
+
+    .lane{ display:flex; flex-direction:column; align-items:center; }
+    .lane-title{
+        font-family:var(--mono); font-size:0.85rem; font-weight:600; padding:0.4rem 1rem; border-radius:40px;
+        margin-bottom:0.6rem; text-align:center;
+    }
+    .lane.attacker .lane-title{ color:var(--coral); background:#241a1a; border:1px solid #7a3a2c; }
+    .lane.receiver .lane-title{ color:var(--teal); background:#0f231f; border:1px solid #1a6b5e; }
+    .node.attacker{ border-color:#7a3a2c; }
+    .node.receiver{ border-color:#1a6b5e; }
+
+    .result{ margin-top:0.6rem; padding:0.5rem 0.8rem; border-radius:0.6rem; font-size:0.8rem; font-weight:600; font-family:var(--mono); }
+    .result.fail{ background:#241a1a; color:#f0a894; border:1px solid #7a3a2c; }
+    .result.pass{ background:#0f231f; color:#9de6db; border:1px solid #1a6b5e; }
+
+    .final-node{
+        margin-top:1.1rem; width:100%; max-width:660px;
+        background:#1d1608; border:1px solid #4a3a1c; border-radius:1rem;
+        padding:1.2rem 1.4rem; text-align:center;
+    }
+    .final-node .title{ color:var(--gold); font-size:1.02rem; font-weight:700; font-family:var(--mono); }
+    .final-node .desc{ color:var(--ink-dim); font-size:0.85rem; margin-top:0.4rem; line-height:1.6; }
+
+    .foot-note{
+        max-width:760px; margin:1.6rem auto 0; padding:1rem 1.3rem;
+        background:var(--panel-alt); border:1px solid var(--line); border-radius:0.8rem;
+        color:var(--ink-dim); font-size:0.84rem; line-height:1.65;
+    }
+    .foot-note strong{ color:var(--ink); }
+
+    /* ---- demo cross-reference badge ---- */
+    .demo-ref {
+        display: inline-block;
+        font-family: var(--mono); font-size: 0.61rem;
+        background: #0d1e32; border: 1px solid #1f4060;
+        color: var(--ink-faint); padding: 0.14rem 0.52rem;
+        border-radius: 3px; letter-spacing: 0.05em;
+        margin-top: 0.5rem; text-transform: uppercase;
+    }
+    .demo-ref .dr-hi { color: var(--violet); font-weight: 700; }
+    .demo-ref.kem-only { border-color: #2a1a08; background: #110d04; color: #6a5020; }
+    .demo-ref.kem-only .dr-hi { color: #c08840; }
+
+    footer{ padding:1.6rem 2.2rem 2rem; text-align:center; color:var(--ink-faint); font-size:0.78rem; font-family:var(--mono); }
+</style>
+</head>
+<body>
+<div class="sheet">
+    <div class="corner-bl"></div><div class="corner-br"></div>
+
+    <div class="title-block">
+        <div>
+            <h1>PIPELINE SCHEMATIC</h1>
+            <div class="sub">Part 2 of 3 · 8-step pipeline — mirrors the worked demo in Part 3 step-for-step</div>
+        </div>
+        <a href="https://www.etsi.org/deliver/etsi_tr/103800_103899/103823/01.01.01_60/tr_103823v010101p.pdf" target="_blank" class="spec-tag" style="text-decoration:none; cursor:pointer;" title="Open ETSI TR 103 823 PDF">SRC: ETSI TR 103 823 ↗</a>
+    </div>
+
+    <div class="legend-bar">
+        <div class="item"><span class="dot owner"></span> Owner / private key</div>
+        <div class="item"><span class="dot kem"></span> KEM layer (outer)</div>
+        <div class="item"><span class="dot attacker"></span> Attacker — fails</div>
+        <div class="item"><span class="dot receiver"></span> Receiver — succeeds</div>
+    </div>
+
+    <div class="flow">
+
+        <!-- ============ PKE.KeyGen (inner layer, offline) ============ -->
+        <div class="layer-frame inner">
+            <div class="frame-tag">INNER · McELIECE.PKE.KEYGEN — offline, owner only</div>
+
+            <div class="node owner">
+                <div class="step-no">01</div>
+                <div class="title">🔐 Sample the Goppa code</div>
+                <div class="desc">Sample a random monic irreducible <code>g(X)</code> of degree t, and n distinct field elements <code>α₁,…,αₙ</code>. This pair is the private key <code>sk = (g(X), α)</code>.</div>
+            </div>
+            <div class="arrow-down">↓</div>
+            <div class="node owner">
+                <div class="step-no">02</div>
+                <div class="title">📐 Build &amp; reduce the parity-check matrix</div>
+                <div class="desc">Construct the private parity-check matrix from g(X), α. Row-reduce it to systematic form to get the public key <code>H′</code>. (If reduction fails, restart from step 01 — a known quirk of the scheme.)</div>
+            </div>
+        </div>
+
+        <div class="arrow-down">↓</div>
+        <div class="split-label">📤 H′ is published — this is the public key anyone can use to encrypt to the owner</div>
+        <div class="arrow-down">↓</div>
+
+        <!-- ============ KEM.Enc (outer layer, sender) ============ -->
+        <div class="layer-frame">
+            <div class="frame-tag">OUTER · McELIECE.KEM.ENC — sender, using public key only</div>
+
+            <div class="node">
+                <div class="step-no">03</div>
+                <div class="title">🎲 Sample the error vector</div>
+                <div class="desc">Sender samples a uniformly random weight-t vector <code>e</code> — this plays the role of the "glitter pattern," and it is what actually gets encrypted, not the message.</div>
+            </div>
+            <div class="arrow-down">↓</div>
+            <div class="node">
+                <div class="step-no">04</div>
+                <div class="title">🔒 Inner encryption — C₀ = PKE.Enc(pk, e)</div>
+                <div class="desc">Reconstruct H from H′ and compute <code>C₀ = H·eᵀ</code>. This single call is the entire inner PKE layer from Part 1.</div>
+            </div>
+            <div class="arrow-down">↓</div>
+            <div class="node">
+                <div class="step-no">05</div>
+                <div class="title">🧾 Bind &amp; derive — C₁, session key K</div>
+                <div class="desc"><code>C₁ = Hash(2 ∥ e)</code> binds the error vector to a tamper-evident tag. <code>K = KDF(1 ∥ e ∥ C₀ ∥ C₁)</code> derives the shared session key. Sender transmits the ciphertext <code>(C₀, C₁)</code> — never K itself.</div>
+            </div>
+        </div>
+
+        <div class="arrow-down">↓</div>
+        <div class="split-label">📡 (C₀, C₁) travels across the open network — anyone can intercept it</div>
+
+        <div class="split-wrap">
+            <div class="lane attacker">
+                <div class="lane-title">🕵️ Attacker's path</div>
+                <div class="node attacker">
+                    <div class="step-no">06</div>
+                    <div class="title">Intercepts (C₀, C₁) — no sk</div>
+                    <div class="desc">Only option: Information Set Decoding — brute-force search over possible weight-t vectors matching C₀ = H·eᵀ.</div>
+                    <div class="result fail">❌ For real parameters (e.g. n=6960, t=119) the search space is ~10²⁰⁰+ — intractable, even for a quantum computer.</div>
+                </div>
+            </div>
+
+            <div class="lane receiver">
+                <div class="lane-title">🔑 Owner's path — KEM.Dec</div>
+                <div class="node receiver">
+                    <div class="step-no">07</div>
+                    <div class="title">⚙️ PKE.Dec(sk, C₀) → e</div>
+                    <div class="desc">Owner uses private key <code>sk = (g(X), α)</code> and received syndrome <code>C₀ = H·eᵀ</code> to run the Extended Euclidean Algorithm on polynomials, find the Error Locator Polynomial σ(X), evaluate σ at each αⱼ, and recover the exact error vector <code>e</code> (or ⊥ if decoding fails). <em>This is the full Goppa decoding step — steps 6 and 7 of the worked demo.</em></div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="node receiver">
+                    <div class="step-no">08</div>
+                    <div class="title">🔁 Re-encrypt &amp; verify → derive K</div>
+                    <div class="desc">Recompute <code>C₀′ = PKE.Enc(pk, e)</code> and <code>C₁′ = Hash(2 ∥ e)</code>. Check both match what was received. If checks pass, derive <code>K = KDF(1 ∥ e ∥ C₀ ∥ C₁)</code>. If any check fails, K is derived from a fixed fallback — a malformed ciphertext produces a key that looks valid but reveals nothing. <em>This Fujisaki–Okamoto step is KEM-only and is not in the toy demo.</em>
+                    <div class="result pass" style="margin-top:0.6rem;">✅ Matches confirm e is genuine — shared session key K established without ever transmitting it.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="final-node">
+            <div class="title">🏁 Shared session key established — 8 steps total</div>
+            <div class="desc">Sender and receiver now hold the same K — derived, never transmitted. The message itself was never touched by McEliece; K goes on to encrypt real data with a symmetric cipher, while the attacker is still stuck searching.<br><br>
+            <span style="font-size:0.8rem; color:#a08030;">Steps 01–02 KeyGen · Steps 03–05 KEM.Enc · Step 06 Attacker · Steps 07–08 KEM.Dec — matches the 8-step worked demo in Part 3.</span></div>
+        </div>
+
+        <div class="foot-note">
+            <strong>Where the toy demo (Part 3) simplifies things:</strong> the worked numeric example encrypts a message codeword directly and recovers it via a syndrome + Euclid's algorithm, which is easier to hand-calculate. The real KEM shown here instead encrypts a random error vector <em>e</em> and uses it to derive a session key — the underlying "guess the error pattern" hardness is identical, but the surrounding protocol (steps 03–09) is the part that makes it a standardized, CCA-secure scheme rather than just a textbook trapdoor.
+        </div>
+    </div>
+
+    <footer>Part 1 → the concept &amp; spec tables · Part 3 → the worked numeric example</footer>
+</div>
+
+<script>
+  function sendHeight() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      window.parent.postMessage({
+        type: 'resize',
+        id: id,
+        height: document.documentElement.scrollHeight
+      }, '*');
+    }
+  }
+  window.addEventListener('load', sendHeight);
+  new ResizeObserver(sendHeight).observe(document.body);
+</script>
+</body>
+</html>
