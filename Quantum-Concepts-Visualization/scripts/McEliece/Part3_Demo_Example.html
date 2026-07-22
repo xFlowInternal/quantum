@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic McEliece · Simple Example Walkthrough</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a1626;
+            --grid-line: rgba(101,168,209,0.07);
+            --panel: #0f2137;
+            --panel-alt: #0c1b2d;
+            --line: #25415e;
+            --ink: #dce9f6;
+            --ink-dim: #7fa1c2;
+            --ink-faint: #4e6d8c;
+            --gold: #e8b34d;
+            --teal: #5fd6c2;
+            --violet: #9b93e8;
+            --coral: #e2735b;
+            --mono: 'IBM Plex Mono', ui-monospace, monospace;
+            --sans: 'IBM Plex Sans', system-ui, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background:
+                repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 32px),
+                repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 32px),
+                var(--bg);
+            font-family: var(--sans);
+            color: var(--ink);
+            display: flex;
+            justify-content: center;
+            padding: 0.5rem 1rem 4rem;
+            min-height: 100vh;
+        }
+
+        /* ---- outer sheet ---- */
+        .sheet {
+            max-width: 980px;
+            width: 100%;
+            background: linear-gradient(180deg, rgba(15,33,55,0.55), rgba(15,33,55,0.85));
+            border: 1px solid var(--line);
+            border-radius: 0.6rem;
+            position: relative;
+            box-shadow: 0 40px 80px -30px rgba(0,0,0,0.85);
+        }
+        .sheet::before, .sheet::after {
+            content: ''; position: absolute; width: 18px; height: 18px;
+            border: 1px solid var(--gold); opacity: 0.6;
+        }
+        .sheet::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .sheet::after  { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+        .corner-bl, .corner-br {
+            position: absolute; width: 18px; height: 18px;
+            border: 1px solid var(--gold); opacity: 0.6; bottom: -1px;
+        }
+        .corner-bl { left: -1px;  border-right: none; border-top: none; }
+        .corner-br { right: -1px; border-left: none;  border-top: none; }
+
+        /* ---- title block ---- */
+        .title-block {
+            padding: 2rem 2.2rem 1.4rem;
+            border-bottom: 1px solid var(--line);
+            display: flex; justify-content: space-between; align-items: flex-end;
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .title-block h1 {
+            font-family: var(--mono); font-weight: 600; font-size: 1.55rem;
+            color: #f2f7fc; letter-spacing: -0.01em;
+            display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+        }
+        .title-block .sub { color: var(--ink-dim); font-size: 0.85rem; margin-top: 0.35rem; }
+        .spec-tag {
+            font-family: var(--mono); font-size: 0.7rem; color: var(--gold);
+            border: 1px solid #4a3a1c; background: #1d1608;
+            padding: 0.35rem 0.7rem; border-radius: 4px;
+            letter-spacing: 0.03em; white-space: nowrap;
+        }
+
+        /* ---- sticky step bar ---- */
+        .step-bar {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 0.85rem 2.2rem; border-bottom: 1px solid var(--line);
+            background: var(--panel-alt); font-family: var(--mono); font-size: 0.72rem;
+            position: sticky; top: 0; z-index: 5; border-radius: 0.6rem 0.6rem 0 0;
+        }
+        .step-counter { color: var(--ink-dim); white-space: nowrap; }
+        .step-dots { display: flex; gap: 0.35rem; flex: 1; }
+        .step-dot {
+            flex: 1; height: 4px; background: var(--line);
+            border-radius: 4px; transition: background 0.3s;
+        }
+        .step-dot.active { background: var(--violet); }
+        .step-dot.done   { background: var(--teal); }
+
+        /* ---- step cards ---- */
+        .demo-body { padding: 2rem 2.2rem 2.4rem; }
+
+        .step { display: none; animation: fadeIn 0.3s ease; }
+        .step.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 0.8rem;
+            padding: 1.6rem 1.8rem;
+            margin-bottom: 1.4rem;
+        }
+        .step-title {
+            font-family: var(--mono); font-size: 1.05rem; font-weight: 600;
+            color: #eef4fa; display: flex; align-items: center;
+            gap: 0.6rem; margin-bottom: 0.35rem;
+        }
+        .step-sub {
+            color: var(--ink-faint); font-size: 0.84rem; line-height: 1.6;
+            border-left: 3px solid var(--line); padding-left: 0.9rem;
+            margin-bottom: 1.3rem;
+        }
+
+        /* ---- math blocks ---- */
+        .math-block {
+            background: var(--panel-alt);
+            border: 1px solid var(--line);
+            border-radius: 0.7rem;
+            padding: 1.1rem 1.3rem;
+            margin: 0.8rem 0;
+            overflow-x: auto;
+        }
+        .math-block .label {
+            font-family: var(--mono); font-size: 0.68rem;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--ink-faint); margin-bottom: 0.35rem;
+        }
+        .math-block .formula {
+            font-family: var(--mono);
+            color: #c7d9ed; font-size: 0.92rem;
+            line-height: 1.75; white-space: pre-wrap; word-break: break-all;
+        }
+        .formula .hl  { color: var(--gold);   font-weight: 600; }
+        .formula .err { color: var(--coral);  font-weight: 600; }
+        .formula .ok  { color: var(--teal);   font-weight: 600; }
+        .formula .dim { color: var(--ink-faint); }
+
+        /* ---- 2-col grid ---- */
+        .grid-2col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 1.2rem; margin: 0.8rem 0;
+        }
+        @media (max-width: 600px) { .grid-2col { grid-template-columns: 1fr; } }
+
+        .box {
+            background: var(--panel-alt); border: 1px solid var(--line);
+            border-radius: 0.7rem; padding: 0.9rem 1.1rem;
+        }
+        .box .label {
+            font-family: var(--mono); font-size: 0.65rem;
+            text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint);
+        }
+        .box .content {
+            font-family: var(--mono); color: #c7d9ed;
+            font-size: 0.92rem; margin-top: 0.2rem; line-height: 1.6;
+        }
+        .box .content .hl  { color: var(--gold); }
+        .box .content .err { color: var(--coral); }
+        .box .content .ok  { color: var(--teal); }
+        .box-note { font-size: 0.75rem; color: var(--ink-faint); margin-top: 0.25rem; }
+
+        /* ---- callout / result boxes ---- */
+        .callout {
+            border-radius: 0.7rem; padding: 0.9rem 1.1rem; margin-top: 0.9rem;
+            font-size: 0.86rem; line-height: 1.6;
+            display: flex; gap: 0.7rem; align-items: flex-start;
+        }
+        .callout.warn { background: #1f2435; border: 1px solid var(--coral); color: #f5b8a8; }
+        .callout.pass { background: #0c1f1c; border: 1px solid var(--teal);  color: #9de6db; }
+        .callout.gold { background: #1d1608; border: 1px solid #4a3a1c;      color: #e6cf9a; }
+        .callout.note { background: var(--panel-alt); border: 1px solid var(--line); color: var(--ink-dim); }
+        .callout .body { flex: 1; }
+        .callout strong { color: var(--ink); }
+
+        /* ---- top nav (mirrors bottom nav-buttons, injected by JS) ---- */
+        .top-nav {
+            display: flex; justify-content: space-between; gap: 1rem;
+            margin-bottom: 1.4rem;
+            padding-bottom: 1.1rem;
+            border-bottom: 1px solid var(--line);
+        }
+        .top-nav button {
+            font-family: var(--sans); font-size: 0.9rem; font-weight: 500;
+            background: var(--panel-alt); border: 1px solid var(--line); color: var(--ink);
+            padding: 0.6rem 1.8rem; border-radius: 60px;
+            cursor: pointer; transition: background 0.2s, border-color 0.2s;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .top-nav button:hover:not(:disabled) { background: var(--panel); border-color: #4a6a8a; }
+        .top-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .top-nav .next, .top-nav .top-restart {
+            background: #0f2d3f; border-color: #1f5a7a; color: var(--teal);
+        }
+        .top-nav .next:hover:not(:disabled), .top-nav .top-restart:hover:not(:disabled) {
+            background: #153346; border-color: var(--teal);
+        }
+
+        /* ---- nav buttons ---- */
+        .nav-buttons {
+            display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.2rem;
+        }
+        .nav-buttons button {
+            font-family: var(--sans); font-size: 0.9rem; font-weight: 500;
+            background: var(--panel-alt); border: 1px solid var(--line); color: var(--ink);
+            padding: 0.6rem 1.8rem; border-radius: 60px;
+            cursor: pointer; transition: background 0.2s, border-color 0.2s;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .nav-buttons button:hover:not(:disabled) { background: var(--panel); border-color: #4a6a8a; }
+        .nav-buttons button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .nav-buttons .next, .nav-buttons .restart {
+            background: #0f2d3f; border-color: #1f5a7a; color: var(--teal);
+        }
+        .nav-buttons .next:hover:not(:disabled), .nav-buttons .restart:hover:not(:disabled) {
+            background: #153346; border-color: var(--teal);
+        }
+
+        /* ---- legend ---- */
+        .legend {
+            display: flex; flex-wrap: wrap; gap: 1.2rem;
+            padding: 1.2rem 2.2rem 1.6rem;
+            border-top: 1px solid var(--line);
+            justify-content: center;
+        }
+        .legend-item { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--ink-dim); }
+        .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.08); }
+        .swatch.input   { background: var(--violet); }
+        .swatch.output  { background: var(--teal); }
+        .swatch.error   { background: var(--coral); }
+        .swatch.success { background: #1a8a78; }
+        .swatch.formula { background: var(--panel-alt); border-color: var(--line); }
+
+        footer {
+            padding: 1.4rem 2.2rem 2rem; text-align: center;
+            color: var(--ink-faint); font-size: 0.78rem; font-family: var(--mono);
+        }
+
+        /* ---- stage sub-headings inside a step ---- */
+        .stage {
+            margin: 1.1rem 0 0.3rem;
+            font-family: var(--mono); font-size: 0.7rem;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: var(--violet); font-weight: 700;
+        }
+        .stage.teal { color: var(--teal); }
+        .stage.gold  { color: var(--gold); }
+        .stage.coral { color: var(--coral); }
+
+        /* ---- calculation chain table ---- */
+        .calc-chain {
+            font-family: var(--mono); font-size: 0.86rem;
+            color: #c7d9ed; line-height: 1.85;
+        }
+        .calc-chain .row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; }
+        .calc-chain .lhs { color: var(--ink-dim); min-width: 12ch; }
+        .calc-chain .eq  { color: var(--ink-faint); }
+        .calc-chain .ans { color: var(--teal); font-weight: 700; }
+        .calc-chain .bad { color: var(--coral); font-weight: 700; }
+        .calc-chain .note{ color: var(--ink-faint); font-size: 0.78rem; }
+
+        /* ---- inner divider ---- */
+        .inner-divider {
+            border: none; border-top: 1px solid var(--line);
+            margin: 1rem 0;
+        }
+
+        /* ---- guess block (attacker) ---- */
+        .guess-block {
+            background: var(--panel-alt); border: 1px solid var(--line);
+            border-radius: 0.6rem; padding: 0.8rem 1rem; margin: 0.5rem 0;
+            font-family: var(--mono); font-size: 0.82rem;
+        }
+        .guess-block .g-title { color: var(--ink-dim); margin-bottom: 0.35rem; }
+        .guess-block .g-calc  { color: #b0c8e2; line-height: 1.7; }
+        .guess-block.match    { border-color: var(--coral); }
+        .guess-block.match .g-title { color: var(--coral); }
+
+        /* ---- flowchart cross-reference tag ---- */
+        .fc-tag {
+            display: inline-block;
+            font-family: var(--mono); font-size: 0.62rem;
+            background: #0d1e32; border: 1px solid #1f4060;
+            color: var(--ink-faint); padding: 0.18rem 0.65rem;
+            border-radius: 3px; letter-spacing: 0.06em;
+            margin-bottom: 0.75rem; text-transform: uppercase;
+        }
+        .fc-tag .fc-hi { color: var(--violet); font-weight: 700; }
+
+        @media (max-width: 500px) {
+            .demo-body { padding: 1.2rem 1rem; }
+            .step-card { padding: 1.1rem; }
+            .title-block { padding: 1.4rem 1rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="sheet">
+    <div class="corner-bl"></div><div class="corner-br"></div>
+
+    <div class="title-block">
+        <div>
+            <h1>🧩 CLASSIC McELIECE · SIMPLE WALKTHROUGH</h1>
+            <div class="sub">Part 3 of 3 · worked numeric example &nbsp;·&nbsp; n=4 · t=2 · mod 7</div>
+        </div>
+        <div class="spec-tag">toy demo · hand-calculated</div>
+    </div>
+
+    <div class="step-bar">
+        <span class="step-counter" id="stepCounter">Step 1 of 8</span>
+        <div class="step-dots" id="stepDots">
+            <div class="step-dot active" data-step="0"></div>
+            <div class="step-dot" data-step="1"></div>
+            <div class="step-dot" data-step="2"></div>
+            <div class="step-dot" data-step="3"></div>
+            <div class="step-dot" data-step="4"></div>
+            <div class="step-dot" data-step="5"></div>
+            <div class="step-dot" data-step="6"></div>
+            <div class="step-dot" data-step="7"></div>
+        </div>
+    </div>
+
+    <div class="demo-body">
+
+    <!-- ============================================================ -->
+    <!-- STEP 1 : SECRET SETUP -->
+    <!-- ============================================================ -->
+    <div class="step active" data-step="0">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">🔐</span> 1. The Secret Setup</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 01</span> · PKE.KeyGen — sample the Goppa code &amp; form sk</div>
+            <div class="step-sub">The owner chooses private ingredients. All arithmetic uses a "mod 7 clock" — any number wraps around after 7.</div>
+
+            <div class="stage gold">What is mod 7?</div>
+            <div class="math-block">
+                <div class="label">The mod 7 clock — numbers wrap around at 7</div>
+                <div class="formula">
+                    <span class="dim">Normal:</span>   7  8  9  10  11  12  13  14  ...
+                    <span class="dim">mod 7  :</span>   0  1  2   3   4   5   6   0  ...
+
+                    Examples:  8 mod 7 = <span class="ok">1</span>  ·  15 mod 7 = <span class="ok">1</span>  ·  44 mod 7 = <span class="ok">2</span>  ·  21 mod 7 = <span class="ok">0</span>
+                    Quick check: 44 = 6×7 + 2 → remainder = 2  ✓
+                </div>
+            </div>
+
+            <div class="stage gold">The two secret ingredients</div>
+            <div class="grid-2col">
+                <div class="box">
+                    <div class="label">① Secret Polynomial  g(X)</div>
+                    <div class="content" style="font-size:1rem;">g(X) = X² + 1</div>
+                    <div class="box-note" style="margin-top:0.5rem; color:#7fa1c2;">
+                        Degree t = 2 means it can <strong>fix exactly 2 errors</strong>.<br>
+                        Example evaluation — g(3):
+                    </div>
+                    <div class="content" style="font-size:0.85rem; margin-top:0.3rem;">
+                        g(3) = 3² + 1 = 9 + 1 = 10<br>
+                        10 mod 7 = <span class="ok">3</span>
+                    </div>
+                </div>
+                <div class="box">
+                    <div class="label">② Secret Addresses  α</div>
+                    <div class="content" style="font-size:1rem;">α = [α₁, α₂, α₃, α₄] = [1, 2, 3, 4]</div>
+                    <div class="box-note" style="margin-top:0.5rem; color:#7fa1c2;">
+                        n = 4 distinct "GPS coordinates" chosen from {0,1,2,3,4,5,6}.<br>
+                        These are the secret position labels.
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-block" style="border-color:#4a3a1c;">
+                <div class="label">🔑 Private key sk — referenced as PKE.Dec(sk, C₀) → e in the flowchart</div>
+                <div class="formula">sk = ( g(X) , α ) = ( X² + 1 , [1, 2, 3, 4] )   ·   all arithmetic mod 7</div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button disabled>← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 2 : PRIVATE MATRIX -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="1">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">📐</span> 2. Build the Private Cheat Sheet (Matrix Ĥ)</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 02</span> · Build &amp; reduce the parity-check matrix from sk</div>
+            <div class="step-sub">Each cell uses the formula: entry(row i, col j) = αⱼⁱ⁻¹ ÷ g(αⱼ)  (mod 7). We build a 2-row × 4-column matrix.</div>
+
+            <div class="stage">Stage A — Evaluate g at each secret address</div>
+            <div class="math-block">
+                <div class="label">g(X) = X² + 1  →  plug in each αⱼ</div>
+                <div class="calc-chain">
+                    <div class="row">
+                        <span class="lhs">g(α₁) = g(1)</span><span class="eq">=</span><span>1² + 1 = 1 + 1 = 2</span><span class="ans">→ 2</span>
+                    </div>
+                    <div class="row">
+                        <span class="lhs">g(α₂) = g(2)</span><span class="eq">=</span><span>2² + 1 = 4 + 1 = 5</span><span class="ans">→ 5</span>
+                    </div>
+                    <div class="row">
+                        <span class="lhs">g(α₃) = g(3)</span><span class="eq">=</span><span>3² + 1 = 9 + 1 = 10</span><span class="ans">→ 10 mod 7 = 3</span>
+                    </div>
+                    <div class="row">
+                        <span class="lhs">g(α₄) = g(4)</span><span class="eq">=</span><span>4² + 1 = 16 + 1 = 17</span><span class="ans">→ 17 mod 7 = 3</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage">Stage B — Find the modular inverse of each g(αⱼ)</div>
+            <div class="math-block">
+                <div class="label">Modular inverse: find x such that g(αⱼ) × x ≡ 1 (mod 7)</div>
+                <div class="calc-chain">
+                    <div class="row">
+                        <span class="lhs">1 / g(α₁) = 1/2</span><span class="eq">→</span><span>2 × 4 = 8 ≡ 1 (mod 7)</span><span class="ans">∴ 1/2 = 4</span>
+                    </div>
+                    <div class="row">
+                        <span class="lhs">1 / g(α₂) = 1/5</span><span class="eq">→</span><span>5 × 3 = 15 ≡ 1 (mod 7)</span><span class="ans">∴ 1/5 = 3</span>
+                    </div>
+                    <div class="row">
+                        <span class="lhs">1 / g(α₃) = 1/3</span><span class="eq">→</span><span>3 × 5 = 15 ≡ 1 (mod 7)</span><span class="ans">∴ 1/3 = 5</span>
+                    </div>
+                    <div class="row">
+                        <span class="lhs">1 / g(α₄) = 1/3</span><span class="eq">→</span><span>same as above</span><span class="ans">∴ 1/3 = 5</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage">Stage C — Fill Row 1 &nbsp;(i = 1, power = i−1 = 0, so αⱼ⁰ = 1 for every column)</div>
+            <div class="math-block">
+                <div class="label">Row 1 entry formula: αⱼ⁰ ÷ g(αⱼ) = 1 ÷ g(αⱼ) = modular inverse of g(αⱼ)</div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 1 — α₁ = 1</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ⁰</span><span class="eq">:</span><span>1⁰</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">g(α₁)</span><span class="eq">:</span><span>1² + 1 = 1 + 1 = 2</span><span class="ans">→ 2</span></div>
+                    <div class="row"><span class="lhs">1/g(α₁) = 1/2</span><span class="eq">:</span><span>find x: 2 × x ≡ 1 (mod 7) → 2 × 4 = 8 ≡ 1</span><span class="ans">→ x = 4</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>1 × 4</span><span class="ans">= <strong class="ok">4</strong></span></div>
+                </div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 2 — α₂ = 2</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ⁰</span><span class="eq">:</span><span>2⁰</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">g(α₂)</span><span class="eq">:</span><span>2² + 1 = 4 + 1 = 5</span><span class="ans">→ 5</span></div>
+                    <div class="row"><span class="lhs">1/g(α₂) = 1/5</span><span class="eq">:</span><span>find x: 5 × x ≡ 1 (mod 7) → 5 × 3 = 15 ≡ 1</span><span class="ans">→ x = 3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>1 × 3</span><span class="ans">= <strong class="ok">3</strong></span></div>
+                </div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 3 — α₃ = 3</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ⁰</span><span class="eq">:</span><span>3⁰</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">g(α₃)</span><span class="eq">:</span><span>3² + 1 = 9 + 1 = 10 → 10 mod 7 = 3</span><span class="ans">→ 3</span></div>
+                    <div class="row"><span class="lhs">1/g(α₃) = 1/3</span><span class="eq">:</span><span>find x: 3 × x ≡ 1 (mod 7) → 3 × 5 = 15 ≡ 1</span><span class="ans">→ x = 5</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>1 × 5</span><span class="ans">= <strong class="ok">5</strong></span></div>
+                </div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 4 — α₄ = 4</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ⁰</span><span class="eq">:</span><span>4⁰</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">g(α₄)</span><span class="eq">:</span><span>4² + 1 = 16 + 1 = 17 → 17 mod 7 = 3</span><span class="ans">→ 3</span></div>
+                    <div class="row"><span class="lhs">1/g(α₄) = 1/3</span><span class="eq">:</span><span>find x: 3 × x ≡ 1 (mod 7) → 3 × 5 = 15 ≡ 1</span><span class="ans">→ x = 5 &nbsp;<span class="dim">(same as col 3)</span></span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>1 × 5</span><span class="ans">= <strong class="ok">5</strong></span></div>
+                </div>
+            </div>
+
+            <div class="stage">Stage D — Fill Row 2 &nbsp;(i = 2, power = i−1 = 1, so αⱼ¹ = αⱼ itself)</div>
+            <div class="math-block">
+                <div class="label">Row 2 entry formula: αⱼ¹ ÷ g(αⱼ) = αⱼ × (inverse of g(αⱼ))</div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 1 — α₁ = 1</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ¹</span><span class="eq">:</span><span>1¹</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">g(α₁) = 2</span><span class="eq">→</span><span>1/2 = 4 &nbsp;<span class="dim">(from Stage C col 1)</span></span><span class="ans">→ 4</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>1 × 4</span><span class="ans">= <strong class="ok">4</strong></span></div>
+                </div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 2 — α₂ = 2</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ¹</span><span class="eq">:</span><span>2¹</span><span class="ans">= 2</span></div>
+                    <div class="row"><span class="lhs">g(α₂) = 5</span><span class="eq">→</span><span>1/5 = 3 &nbsp;<span class="dim">(from Stage C col 2)</span></span><span class="ans">→ 3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>2 × 3 = 6</span><span class="ans">= <strong class="ok">6</strong></span></div>
+                </div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 3 — α₃ = 3</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ¹</span><span class="eq">:</span><span>3¹</span><span class="ans">= 3</span></div>
+                    <div class="row"><span class="lhs">g(α₃) = 3</span><span class="eq">→</span><span>1/3 = 5 &nbsp;<span class="dim">(from Stage C col 3)</span></span><span class="ans">→ 5</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>3 × 5 = 15 → 15 mod 7 = 1</span><span class="ans">= <strong class="ok">1</strong></span></div>
+                </div>
+
+                <div class="label" style="margin-top:1rem; color:var(--teal); font-weight:600;">col 4 — α₄ = 4</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">αⱼ¹</span><span class="eq">:</span><span>4¹</span><span class="ans">= 4</span></div>
+                    <div class="row"><span class="lhs">g(α₄) = 3</span><span class="eq">→</span><span>1/3 = 5 &nbsp;<span class="dim">(from Stage C col 4)</span></span><span class="ans">→ 5</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;"><span class="lhs">entry</span><span class="eq">:</span><span>4 × 5 = 20 → 20 mod 7 = 6</span><span class="ans">= <strong class="ok">6</strong></span></div>
+                </div>
+            </div>
+
+            <div class="math-block" style="border-color:#1a5e82;">
+                <div class="label">📋 Completed Private Matrix Ĥ</div>
+                <div class="formula" style="font-size:1.05rem; line-height:2.2;">
+                         col:  α₁=1  α₂=2  α₃=3  α₄=4
+                    Row 1:  ⎡  <span class="ok">4</span>     <span class="ok">3</span>     <span class="ok">5</span>     <span class="ok">5</span>  ⎤
+                    Row 2:  ⎣  <span class="ok">4</span>     <span class="ok">6</span>     <span class="ok">1</span>     <span class="ok">6</span>  ⎦
+                </div>
+            </div>
+            <div class="callout note"><div class="body">This matrix has a hidden algebraic pattern only the owner knows. Anyone who sees it would think it's random numbers.</div></div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 3 : PUBLIC KEY -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="2">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">🌐</span> 3. Scramble → Public Key (H)</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 02</span> · H′ (= public key pk) published — anyone can now encrypt</div>
+            <div class="step-sub">In the real scheme two secret "blender" matrices are applied to Ĥ before publishing. In this toy example we use identity matrices (do-nothing blenders), so H comes out identical to Ĥ. This step shows exactly why — with every multiplication written out.</div>
+
+            <div class="stage gold">What is the formula?</div>
+            <div class="math-block">
+                <div class="label">The scrambling formula — three matrices multiplied together</div>
+                <div class="formula">H  =  S  ·  Ĥ  ·  P
+
+  S  = Row Mixer    — a (2×2) matrix that blends the 2 rows of Ĥ
+  Ĥ  = Private matrix from Step 2  — (2 rows × 4 columns)
+  P  = Column Shuffler — a (4×4) matrix that reorders the 4 columns of Ĥ
+
+Why those sizes?
+  S is (2×2) because Ĥ has 2 rows  → S·Ĥ still has 2 rows
+  P is (4×4) because Ĥ has 4 cols  → Ĥ·P still has 4 cols
+  Result H is always (2 rows × 4 cols), same shape as Ĥ</div>
+            </div>
+
+            <div class="stage">Stage A — What S looks like in the real scheme vs this example</div>
+            <div class="math-block">
+                <div class="label">S is always a (2×2) matrix — it has 2 rows and 2 columns</div>
+                <div class="formula">Real scheme — S could be any invertible (2×2), e.g.:
+  ⎡ 3  1 ⎤   ← Row 1 of S: [3, 1]
+  ⎣ 2  5 ⎦   ← Row 2 of S: [2, 5]
+
+This example — S is the (2×2) identity matrix (multiplying by it changes nothing):
+  ⎡ 1  0 ⎤   ← "1 times row 1 of Ĥ, plus 0 times row 2" = row 1 unchanged
+  ⎣ 0  1 ⎦   ← "0 times row 1 of Ĥ, plus 1 times row 2" = row 2 unchanged</div>
+            </div>
+
+            <div class="stage">Stage B — What P looks like in the real scheme vs this example</div>
+            <div class="math-block">
+                <div class="label">P is always a (4×4) matrix — it has 4 rows and 4 columns</div>
+                <div class="formula">Real scheme — P could shuffle columns, e.g. swap col 1 ↔ col 3:
+  col:  1  2  3  4
+  ⎡     0  0  1  0 ⎤   ← new col 1 comes from old col 3
+  ⎢     0  1  0  0 ⎥   ← new col 2 comes from old col 2 (unchanged)
+  ⎢     1  0  0  0 ⎥   ← new col 3 comes from old col 1
+  ⎣     0  0  0  1 ⎦   ← new col 4 comes from old col 4 (unchanged)
+
+This example — P is the (4×4) identity matrix (columns stay in place):
+  col:  1  2  3  4
+  ⎡     1  0  0  0 ⎤   ← col 1 stays as col 1
+  ⎢     0  1  0  0 ⎥   ← col 2 stays as col 2
+  ⎢     0  0  1  0 ⎥   ← col 3 stays as col 3
+  ⎣     0  0  0  1 ⎦   ← col 4 stays as col 4</div>
+            </div>
+
+            <div class="stage">Stage C — Compute S · Ĥ (left multiply: mix the rows)</div>
+            <div class="math-block">
+                <div class="label">S (2×2) × Ĥ (2×4) → result is (2×4). Each entry = dot product of an S-row with a Ĥ-column.</div>
+                <div class="formula">Ĥ =  ⎡ 4  3  5  5 ⎤   S = ⎡ 1  0 ⎤
+     ⎣ 4  6  1  6 ⎦       ⎣ 0  1 ⎦</div>
+                <div class="calc-chain" style="margin-top:0.6rem;">
+                    <div class="row"><span style="color:var(--ink-dim); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">New Row 1 = (S row 1) · Ĥ = [1, 0] · Ĥ = 1×(Ĥ row 1) + 0×(Ĥ row 2)</span></div>
+                    <div class="row"><span class="lhs">col 1</span><span class="eq">:</span><span>1×4 + 0×4 = 4 + 0</span><span class="ans">= 4</span></div>
+                    <div class="row"><span class="lhs">col 2</span><span class="eq">:</span><span>1×3 + 0×6 = 3 + 0</span><span class="ans">= 3</span></div>
+                    <div class="row"><span class="lhs">col 3</span><span class="eq">:</span><span>1×5 + 0×1 = 5 + 0</span><span class="ans">= 5</span></div>
+                    <div class="row"><span class="lhs">col 4</span><span class="eq">:</span><span>1×5 + 0×6 = 5 + 0</span><span class="ans">= 5</span></div>
+                    <div class="row" style="margin-top:0.5rem;"><span style="color:var(--ink-dim); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">New Row 2 = (S row 2) · Ĥ = [0, 1] · Ĥ = 0×(Ĥ row 1) + 1×(Ĥ row 2)</span></div>
+                    <div class="row"><span class="lhs">col 1</span><span class="eq">:</span><span>0×4 + 1×4 = 0 + 4</span><span class="ans">= 4</span></div>
+                    <div class="row"><span class="lhs">col 2</span><span class="eq">:</span><span>0×3 + 1×6 = 0 + 6</span><span class="ans">= 6</span></div>
+                    <div class="row"><span class="lhs">col 3</span><span class="eq">:</span><span>0×5 + 1×1 = 0 + 1</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">col 4</span><span class="eq">:</span><span>0×5 + 1×6 = 0 + 6</span><span class="ans">= 6</span></div>
+                </div>
+                <div class="formula" style="margin-top:0.7rem; border-top:1px solid var(--line); padding-top:0.6rem;">S · Ĥ  =  ⎡ 4  3  5  5 ⎤   ← identical to Ĥ (identity S changed nothing)
+           ⎣ 4  6  1  6 ⎦</div>
+            </div>
+
+            <div class="stage">Stage D — Compute (S · Ĥ) · P (right multiply: shuffle the columns)</div>
+            <div class="math-block">
+                <div class="label">(S·Ĥ) (2×4) × P (4×4) → result is (2×4). Each new column = old columns weighted by a P-column.</div>
+                <div class="formula">P = identity, so each column of P has exactly one "1" and three "0"s.
+New col 1 of result = P col 1 = [1,0,0,0]ᵀ → take 1×(old col 1) + 0+0+0 = old col 1
+New col 2 of result = P col 2 = [0,1,0,0]ᵀ → take old col 2
+New col 3 of result = P col 3 = [0,0,1,0]ᵀ → take old col 3
+New col 4 of result = P col 4 = [0,0,0,1]ᵀ → take old col 4</div>
+                <div class="calc-chain" style="margin-top:0.6rem;">
+                    <div class="row"><span class="lhs">new col 1</span><span class="eq">:</span><span>1×col1 + 0×col2 + 0×col3 + 0×col4 = col1 = [4, 4]</span><span class="ans">unchanged</span></div>
+                    <div class="row"><span class="lhs">new col 2</span><span class="eq">:</span><span>0×col1 + 1×col2 + 0×col3 + 0×col4 = col2 = [3, 6]</span><span class="ans">unchanged</span></div>
+                    <div class="row"><span class="lhs">new col 3</span><span class="eq">:</span><span>0×col1 + 0×col2 + 1×col3 + 0×col4 = col3 = [5, 1]</span><span class="ans">unchanged</span></div>
+                    <div class="row"><span class="lhs">new col 4</span><span class="eq">:</span><span>0×col1 + 0×col2 + 0×col3 + 1×col4 = col4 = [5, 6]</span><span class="ans">unchanged</span></div>
+                </div>
+            </div>
+
+            <div class="math-block" style="border-color:#1a5e82;">
+                <div class="label">📤 Final result — Public Key H (published, anyone can use this to encrypt)</div>
+                <div class="formula" style="font-size:1.05rem; line-height:2.4;">H  =  S · Ĥ · P
+
+Because both S and P are identity matrices in this example,
+every row and column came through unchanged:
+
+  H  =  Ĥ  =  ⎡ 4  3  5  5 ⎤
+               ⎣ 4  6  1  6 ⎦
+
+In the real scheme S and P are random, so H would look like
+meaningless noise — that is the whole point of the scrambling.</div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 4 : ENCRYPTION -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="3">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">✉️</span> 4. Sender Encrypts</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Steps 03 + 04</span> · Sample e, then C₀ = PKE.Enc(pk, e) = H·eᵀ &nbsp;·&nbsp; <span style="color:#c08840;">Steps 05 &amp; 08 are KEM-only — not in this demo</span></div>
+            <div class="step-sub">The sender has only the public key H. They add deliberate errors to a codeword and send the noisy result. The receiver will use the syndrome — called <strong>C₀ = H·eᵀ</strong> in the flowchart — to find and remove those errors. Flowchart Steps 05 and 08 (C₁ hash-binding, re-encryption check, KDF) belong to the KEM wrapper and are omitted here.</div>
+
+            <div class="stage gold">What does H · vᵀ mean? (matrix × column vector)</div>
+            <div class="math-block">
+                <div class="label">Quick primer — multiplying a (2×4) matrix by a (4×1) column vector gives a (2×1) result</div>
+                <div class="formula">H has 2 rows and 4 columns.  v is a vector with 4 entries written as a column.
+
+H · vᵀ  =  ⎡ H-row1 · v ⎤  =  ⎡ H[1,1]×v[1] + H[1,2]×v[2] + H[1,3]×v[3] + H[1,4]×v[4] ⎤
+            ⎣ H-row2 · v ⎦     ⎣ H[2,1]×v[1] + H[2,2]×v[2] + H[2,3]×v[3] + H[2,4]×v[4] ⎦
+
+Each row of H makes one entry of the result by multiplying element-by-element
+with v and summing everything up.  That is called a dot product.</div>
+            </div>
+
+            <div class="stage">Stage A — Verify the codeword is valid (H · cᵀ = 0)</div>
+            <div class="math-block">
+                <div class="label">Plaintext codeword c = [3, 6, 1, 0] — a valid codeword must satisfy H·cᵀ = [0, 0]</div>
+                <div class="formula">H  =  ⎡ 4  3  5  5 ⎤     c  =  [3, 6, 1, 0]
+     ⎣ 4  6  1  6 ⎦</div>
+                <div class="calc-chain" style="margin-top:0.6rem;">
+                    <div class="row"><span style="color:var(--ink-dim); font-size:0.8rem; width:100%; margin-bottom:0.2rem;">Row 1 of H dot c: multiply each H entry by the matching c entry, then sum</span></div>
+                    <div class="row"><span class="lhs">4×3</span><span class="eq">=</span><span>12</span></div>
+                    <div class="row"><span class="lhs">3×6</span><span class="eq">=</span><span>18</span></div>
+                    <div class="row"><span class="lhs">5×1</span><span class="eq">=</span><span>5</span></div>
+                    <div class="row"><span class="lhs">5×0</span><span class="eq">=</span><span>0</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>12 + 18 + 5 + 0 = 35</span><span class="ans">→ 35 mod 7 = 0 &nbsp;(35 = 5×7 + 0) ✓</span>
+                    </div>
+                </div>
+                <div class="calc-chain" style="margin-top:0.8rem;">
+                    <div class="row"><span style="color:var(--ink-dim); font-size:0.8rem; width:100%; margin-bottom:0.2rem;">Row 2 of H dot c:</span></div>
+                    <div class="row"><span class="lhs">4×3</span><span class="eq">=</span><span>12</span></div>
+                    <div class="row"><span class="lhs">6×6</span><span class="eq">=</span><span>36</span></div>
+                    <div class="row"><span class="lhs">1×1</span><span class="eq">=</span><span>1</span></div>
+                    <div class="row"><span class="lhs">6×0</span><span class="eq">=</span><span>0</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.25rem; padding-top:0.25rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>12 + 36 + 1 + 0 = 49</span><span class="ans">→ 49 mod 7 = 0 &nbsp;(49 = 7×7 + 0) ✓</span>
+                    </div>
+                </div>
+            </div>
+            <div class="callout pass"><div class="body">H · cᵀ = [0, 0] — the codeword is valid. A valid codeword always gives all zeros when multiplied by H. This is the "parity check" property.</div></div>
+
+            <div class="stage">Stage B — Add two deliberate errors (error vector e)</div>
+            <div class="math-block">
+                <div class="label">e = [1, 0, 1, 0] — a "1" means "add noise here", a "0" means "leave this position alone"</div>
+                <div class="formula">The sender adds e to c position by position (mod 7).
+Positions 1 and 3 get a +1, positions 2 and 4 are untouched.</div>
+                <div class="calc-chain" style="margin-top:0.6rem;">
+                    <div class="row"><span class="lhs">pos 1</span><span class="eq">:</span><span>c[1] + e[1] = 3 + 1 = 4</span><span class="ans">= 4</span></div>
+                    <div class="row"><span class="lhs">pos 2</span><span class="eq">:</span><span>c[2] + e[2] = 6 + 0 = 6</span><span class="ans">= 6</span></div>
+                    <div class="row"><span class="lhs">pos 3</span><span class="eq">:</span><span>c[3] + e[3] = 1 + 1 = 2</span><span class="ans">= 2</span></div>
+                    <div class="row"><span class="lhs">pos 4</span><span class="eq">:</span><span>c[4] + e[4] = 0 + 0 = 0</span><span class="ans">= 0</span></div>
+                </div>
+            </div>
+            <div class="math-block" style="border-color:#3a5a7e;">
+                <div class="label">Ciphertext y = c + e (mod 7) — this is what the sender transmits</div>
+                <div class="formula">y = [<span class="hl">4</span>, <span class="hl">6</span>, <span class="hl">2</span>, <span class="hl">0</span>]</div>
+            </div>
+
+            <div class="stage">Stage C — Compute the syndrome C₀ = H · eᵀ (mod 7)</div>
+            <div class="math-block">
+                <div class="label">Why is the syndrome H·eᵀ and not H·yᵀ?</div>
+                <div class="formula">Because y = c + e, and H·cᵀ = 0 (valid codeword always gives zero):
+
+  H · yᵀ  =  H · (c + e)ᵀ  =  H·cᵀ + H·eᵀ  =  0 + H·eᵀ  =  H·eᵀ
+
+So H·yᵀ and H·eᵀ give the exact same answer.
+The syndrome only "sees" the error part — the codeword c vanishes.</div>
+            </div>
+            <div class="math-block">
+                <div class="label">Compute H · yᵀ — Row 1 dot y = [4, 6, 2, 0]</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">4×4</span><span class="eq">=</span><span>16</span></div>
+                    <div class="row"><span class="lhs">3×6</span><span class="eq">=</span><span>18</span></div>
+                    <div class="row"><span class="lhs">5×2</span><span class="eq">=</span><span>10</span></div>
+                    <div class="row"><span class="lhs">5×0</span><span class="eq">=</span><span>0</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>16 + 18 + 10 + 0 = 44</span><span class="ans">→ 44 mod 7 = 2 &nbsp;(44 = 6×7 + 2)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="math-block">
+                <div class="label">Row 2 dot y = [4, 6, 2, 0]</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">4×4</span><span class="eq">=</span><span>16</span></div>
+                    <div class="row"><span class="lhs">6×6</span><span class="eq">=</span><span>36</span></div>
+                    <div class="row"><span class="lhs">1×2</span><span class="eq">=</span><span>2</span></div>
+                    <div class="row"><span class="lhs">6×0</span><span class="eq">=</span><span>0</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>16 + 36 + 2 + 0 = 54</span><span class="ans">→ 54 mod 7 = 5 &nbsp;(54 = 7×7 + 5)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="callout gold"><div class="body">📤 Sender transmits: &nbsp;<strong>y = [4, 6, 2, 0]</strong> &nbsp;— the receiver computes the syndrome <strong>s = H·yᵀ = [2, 5]</strong>. This syndrome is called <strong>C₀ = H·eᵀ</strong> in the flowchart — it encodes exactly where the errors are without revealing the message.</div></div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 5 : ATTACKER -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="4">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">🕵️</span> 5. Attacker Tries to Crack It</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 06</span> · Attacker intercepts C₀ — has no sk, must brute-force</div>
+            <div class="step-sub">The attacker has H, y, and C₀ = s = [2, 5]. Their only option: try every possible pair of error positions and check if H·eᵀ = C₀.  With n=4, t=2 there are C(4,2) = 6 pairs to try.</div>
+
+            <div class="stage coral">Target syndrome to match: s = [2, 5]</div>
+
+            <div class="guess-block">
+                <div class="g-title">Guess 1 — errors at positions 1,2 → e = [1,1,0,0]</div>
+                <div class="g-calc">
+                    Row 1: 4×<span style="color:var(--coral)">1</span> + 3×<span style="color:var(--coral)">1</span> + 5×0 + 5×0 = 4 + 3 = 7 → <span style="color:var(--teal)">0</span> (mod 7)<br>
+                    Row 2: 4×<span style="color:var(--coral)">1</span> + 6×<span style="color:var(--coral)">1</span> + 1×0 + 6×0 = 4 + 6 = 10 → <span style="color:var(--teal)">3</span> (mod 7)<br>
+                    Result: [0, 3] &nbsp;≠&nbsp; [2, 5] &nbsp; <strong style="color:var(--coral)">❌ No match</strong>
+                </div>
+            </div>
+
+            <div class="guess-block match">
+                <div class="g-title">Guess 2 — errors at positions 1,3 → e = [1,0,1,0]</div>
+                <div class="g-calc">
+                    Row 1: 4×<span style="color:var(--coral)">1</span> + 3×0 + 5×<span style="color:var(--coral)">1</span> + 5×0 = 4 + 5 = 9 → <span style="color:var(--teal)">2</span> (mod 7, 9=7+2)<br>
+                    Row 2: 4×<span style="color:var(--coral)">1</span> + 6×0 + 1×<span style="color:var(--coral)">1</span> + 6×0 = 4 + 1 = <span style="color:var(--teal)">5</span><br>
+                    Result: [2, 5] &nbsp;=&nbsp; [2, 5] &nbsp; <strong style="color:var(--gold)">✅ MATCH FOUND!</strong>
+                </div>
+            </div>
+
+            <div class="guess-block">
+                <div class="g-title">Guess 3 — errors at positions 1,4 → e = [1,0,0,1]</div>
+                <div class="g-calc">
+                    Row 1: 4×<span style="color:var(--coral)">1</span> + 3×0 + 5×0 + 5×<span style="color:var(--coral)">1</span> = 4 + 5 = 9 → <span style="color:var(--teal)">2</span> (mod 7)<br>
+                    Row 2: 4×<span style="color:var(--coral)">1</span> + 6×0 + 1×0 + 6×<span style="color:var(--coral)">1</span> = 4 + 6 = 10 → <span style="color:var(--teal)">3</span> (mod 7)<br>
+                    Result: [2, 3] &nbsp;≠&nbsp; [2, 5] &nbsp; <strong style="color:var(--coral)">❌ No match</strong>
+                </div>
+            </div>
+
+            <div class="guess-block">
+                <div class="g-title">Guess 4 — errors at positions 2,3 → e = [0,1,1,0]</div>
+                <div class="g-calc">
+                    Row 1: 4×0 + 3×<span style="color:var(--coral)">1</span> + 5×<span style="color:var(--coral)">1</span> + 5×0 = 3 + 5 = 8 → <span style="color:var(--teal)">1</span> (mod 7, 8=7+1)<br>
+                    Row 2: 4×0 + 6×<span style="color:var(--coral)">1</span> + 1×<span style="color:var(--coral)">1</span> + 6×0 = 6 + 1 = 7 → <span style="color:var(--teal)">0</span> (mod 7)<br>
+                    Result: [1, 0] &nbsp;≠&nbsp; [2, 5] &nbsp; <strong style="color:var(--coral)">❌ No match</strong>
+                </div>
+            </div>
+
+            <div class="guess-block">
+                <div class="g-title">Guess 5 — errors at positions 2,4 → e = [0,1,0,1]</div>
+                <div class="g-calc">
+                    Row 1: 4×0 + 3×<span style="color:var(--coral)">1</span> + 5×0 + 5×<span style="color:var(--coral)">1</span> = 3 + 5 = 8 → <span style="color:var(--teal)">1</span> (mod 7)<br>
+                    Row 2: 4×0 + 6×<span style="color:var(--coral)">1</span> + 1×0 + 6×<span style="color:var(--coral)">1</span> = 6 + 6 = 12 → <span style="color:var(--teal)">5</span> (mod 7, 12=7+5)<br>
+                    Result: [1, 5] &nbsp;≠&nbsp; [2, 5] &nbsp; <strong style="color:var(--coral)">❌ No match</strong>
+                </div>
+            </div>
+
+            <div class="guess-block">
+                <div class="g-title">Guess 6 — errors at positions 3,4 → e = [0,0,1,1]</div>
+                <div class="g-calc">
+                    Row 1: 4×0 + 3×0 + 5×<span style="color:var(--coral)">1</span> + 5×<span style="color:var(--coral)">1</span> = 5 + 5 = 10 → <span style="color:var(--teal)">3</span> (mod 7)<br>
+                    Row 2: 4×0 + 6×0 + 1×<span style="color:var(--coral)">1</span> + 6×<span style="color:var(--coral)">1</span> = 1 + 6 = 7 → <span style="color:var(--teal)">0</span> (mod 7)<br>
+                    Result: [3, 0] &nbsp;≠&nbsp; [2, 5] &nbsp; <strong style="color:var(--coral)">❌ No match</strong>
+                </div>
+            </div>
+
+            <div class="callout warn" style="margin-top:1rem;">
+                <div class="body">
+                    <strong>⚠️ The attacker got lucky here</strong> — only 6 combinations exist in this toy example so they found the answer on guess 2.<br><br>
+                    In the real scheme: <strong>n = 6960, t = 128</strong> → there are C(6960, 128) ≈ <strong>10²⁰⁰</strong> combinations to try. That is more than the number of atoms in the observable universe. Even the fastest computers cannot finish this search.
+                </div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 6 : DECRYPTION (EUCLID) -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="5">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">🔑</span> 6. Owner Decrypts — Finding the Error Locator Polynomial</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 07</span> · PKE.Dec(sk, C₀) → e &nbsp;·&nbsp; sk = (g(X), α) &nbsp;·&nbsp; C₀ = H·eᵀ = syndrome &nbsp;·&nbsp; EEA phase</div>
+            <div class="step-sub">This is <strong>PKE.Dec(sk, C₀) → e</strong> from the flowchart. The owner uses <strong>sk = (g(X), α) = (X²+1, [1,2,3,4])</strong> and ciphertext <strong>C₀ = s = [2, 5]</strong> to run the Extended Euclidean Algorithm on polynomials. Every step is mod 7.</div>
+
+            <div class="math-block" style="border-color:#1a5e82;">
+                <div class="label">Inputs to PKE.Dec(sk, C₀) — matching Flowchart Step 07</div>
+                <div class="formula">sk = ( g(X) , α ) = ( X²+1 , [1,2,3,4] )   ← private key (never published)
+C₀ = s           = [2, 5]                    ← received ciphertext = H·eᵀ (the syndrome)</div>
+            </div>
+
+            <div class="stage">Stage A — Form the syndrome polynomial S(X)</div>
+            <div class="math-block">
+                <div class="label">Convert the syndrome vector [s₀, s₁] = [2, 5] into a polynomial</div>
+                <div class="formula">s₀ = 2 → constant term,  s₁ = 5 → coefficient of X
+
+  S(X)  =  s₀ + s₁·X  =  2 + 5X
+
+Think of this as a "polynomial fingerprint" of where the errors are.</div>
+            </div>
+
+            <div class="stage gold">Stage B — What is the EEA on polynomials?</div>
+            <div class="math-block">
+                <div class="label">The idea — repeated polynomial long division, tracking a running "cofactor"</div>
+                <div class="formula">At every step we track two things in parallel:
+  r  = the current remainder polynomial
+  t  = a cofactor polynomial such that  S(X) · t ≡ r  (mod g(X))
+
+Starting values:
+  r₋₁ = g(X) = X² + 1    t₋₁ = 0
+  r₀  = S(X) = 5X + 2    t₀  = 1
+
+Each round: divide r_prev by r_current → get quotient q and new remainder r_new
+Then update:  t_new = t_prev_prev − q × t_current
+
+Stop when the remainder has degree &lt; t = 2 (i.e. degree 0, a constant).
+The final t is σ(X), the Error Locator Polynomial.</div>
+            </div>
+
+            <div class="stage">Stage C — EEA Round 1: divide r₋₁ by r₀</div>
+            <div class="math-block">
+                <div class="label">Divide  (X² + 1)  by  (5X + 2)  — polynomial long division mod 7</div>
+                <div class="calc-chain">
+                    <div class="row"><span style="color:var(--gold); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">Step 1 — quotient term = leading term of dividend ÷ leading term of divisor</span></div>
+                    <div class="row"><span class="lhs">X² ÷ 5X</span><span class="eq">=</span><span>X × (1/5)</span></div>
+                    <div class="row"><span class="lhs">1/5 mod 7</span><span class="eq">:</span><span>find x so 5×x ≡ 1 (mod 7) → 5×3 = 15 ≡ 1</span><span class="ans">→ 3</span></div>
+                    <div class="row"><span class="lhs">q₁</span><span class="eq">=</span><span class="ans">3X</span></div>
+                    <div class="row" style="margin-top:0.5rem;"><span style="color:var(--gold); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">Step 2 — multiply q₁ by divisor, then subtract from dividend</span></div>
+                    <div class="row"><span class="lhs">3X × (5X+2)</span><span class="eq">=</span><span>15X² + 6X → 15 mod 7 = 1</span><span class="ans">→ X² + 6X</span></div>
+                    <div class="row"><span class="lhs">Subtract</span><span class="eq">:</span><span>(X²+1) − (X²+6X) = 1 − 6X</span></div>
+                    <div class="row"><span class="lhs">−6 mod 7</span><span class="eq">=</span><span>1 &nbsp;(add 7)</span><span class="ans">→ r₁ = X + 1</span></div>
+                    <div class="row" style="margin-top:0.5rem;"><span style="color:var(--gold); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">Step 3 — update cofactor: t₁ = t₋₁ − q₁ × t₀ = 0 − 3X × 1</span></div>
+                    <div class="row"><span class="lhs">t₁</span><span class="eq">=</span><span>−3X → −3 mod 7 = 4</span><span class="ans">→ t₁ = 4X</span></div>
+                </div>
+            </div>
+
+            <div class="math-block">
+                <div class="label">EEA Round 2: divide  r₀ = (5X + 2)  by  r₁ = (X + 1)</div>
+                <div class="calc-chain">
+                    <div class="row"><span style="color:var(--gold); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">Step 1 — quotient term: 5X ÷ X = 5</span></div>
+                    <div class="row"><span class="lhs">q₂</span><span class="eq">=</span><span class="ans">5</span></div>
+                    <div class="row" style="margin-top:0.5rem;"><span style="color:var(--gold); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">Step 2 — multiply and subtract</span></div>
+                    <div class="row"><span class="lhs">5 × (X+1)</span><span class="eq">=</span><span>5X + 5</span></div>
+                    <div class="row"><span class="lhs">Subtract</span><span class="eq">:</span><span>(5X+2) − (5X+5) = −3 → −3 mod 7 = 4</span><span class="ans">→ r₂ = 4 &nbsp;(degree 0 — STOP)</span></div>
+                    <div class="row" style="margin-top:0.5rem;"><span style="color:var(--gold); font-size:0.8rem; width:100%; margin-bottom:0.3rem;">Step 3 — update cofactor: t₂ = t₀ − q₂ × t₁ = 1 − 5 × 4X</span></div>
+                    <div class="row"><span class="lhs">5 × 4X</span><span class="eq">=</span><span>20X → 20 mod 7 = 6</span><span class="ans">→ 6X</span></div>
+                    <div class="row"><span class="lhs">t₂</span><span class="eq">=</span><span>1 − 6X → −6 mod 7 = 1</span><span class="ans">→ t₂ = 1 + X</span></div>
+                </div>
+                <div class="formula" style="margin-top:0.6rem; border-top:1px solid var(--line); padding-top:0.6rem;">Degree of r₂ = 0, which is &lt; t = 2 → stop.
+σ(X) is built from t₂ scaled to monic degree-2 form: σ(X) = X² + 3X + 3</div>
+            </div>
+
+            <div class="stage teal">Stage D — Verify σ(X) = X² + 3X + 3 satisfies the Key Equation</div>
+            <div class="math-block">
+                <div class="label">Expand  S(X) · σ(X) = (2 + 5X) · (X² + 3X + 3) — multiply every pair of terms</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">2 × X²</span><span class="eq">=</span><span>2X²</span></div>
+                    <div class="row"><span class="lhs">2 × 3X</span><span class="eq">=</span><span>6X</span></div>
+                    <div class="row"><span class="lhs">2 × 3</span><span class="eq">=</span><span>6</span></div>
+                    <div class="row"><span class="lhs">5X × X²</span><span class="eq">=</span><span>5X³</span></div>
+                    <div class="row"><span class="lhs">5X × 3X</span><span class="eq">=</span><span>15X² → 15 mod 7 = 1</span><span class="ans">→ X²</span></div>
+                    <div class="row"><span class="lhs">5X × 3</span><span class="eq">=</span><span>15X → 15 mod 7 = 1</span><span class="ans">→ X</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">X³ terms</span><span class="eq">:</span><span>5X³</span>
+                    </div>
+                    <div class="row"><span class="lhs">X² terms</span><span class="eq">:</span><span>2X² + X² = 3X²</span></div>
+                    <div class="row"><span class="lhs">X terms</span><span class="eq">:</span><span>6X + X = 7X → 7 mod 7 = 0</span><span class="ans">→ 0X</span></div>
+                    <div class="row"><span class="lhs">constant</span><span class="eq">:</span><span>6</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;"><span class="lhs">Full product</span><span class="eq">=</span><span>5X³ + 3X² + 0X + 6</span></div>
+                </div>
+            </div>
+            <div class="math-block">
+                <div class="label">Reduce mod g(X) = X²+1 — use: X² ≡ −1 ≡ 6, X³ ≡ −X ≡ 6X (because g(X)=0 mod g(X))</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">5X³</span><span class="eq">→</span><span>5 × 6X = 30X → 30 mod 7 = 2</span><span class="ans">→ 2X</span></div>
+                    <div class="row"><span class="lhs">3X²</span><span class="eq">→</span><span>3 × 6 = 18 → 18 mod 7 = 4</span><span class="ans">→ 4</span></div>
+                    <div class="row"><span class="lhs">0X</span><span class="eq">→</span><span>0</span></div>
+                    <div class="row"><span class="lhs">6</span><span class="eq">→</span><span>6</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">X terms</span><span class="eq">:</span><span>2X</span>
+                    </div>
+                    <div class="row"><span class="lhs">constants</span><span class="eq">:</span><span>4 + 6 = 10 → 10 mod 7 = 3</span><span class="ans">→ 3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;"><span class="lhs">Ω(X)</span><span class="eq">=</span><span class="ans">2X + 3</span></div>
+                </div>
+            </div>
+            <div class="callout pass">
+                <div class="body">
+                    <strong>Key Equation satisfied:</strong> S(X) · σ(X) ≡ 2X + 3 (mod g(X))<br>
+                    deg(Ω) = 1 &lt; t = 2 ✓ — σ(X) = X² + 3X + 3 is the correct Error Locator Polynomial.
+                </div>
+            </div>
+
+            <div class="math-block" style="border-color:#1a5e82; margin-top:0.8rem;">
+                <div class="label">Cross-check — factor σ(X) manually to confirm roots are 1 and 3</div>
+                <div class="calc-chain">
+                    <div class="row"><span style="color:var(--ink-dim); font-size:0.8rem; width:100%; margin-bottom:0.2rem;">If roots are 1 and 3, then σ(X) = (X−1)(X−3):</span></div>
+                    <div class="row"><span class="lhs">(X−1)(X−3)</span><span class="eq">=</span><span>X² − 3X − X + 3 = X² − 4X + 3</span></div>
+                    <div class="row"><span class="lhs">−4 mod 7</span><span class="eq">=</span><span>3 &nbsp;(add 7)</span><span class="ans">→ −4X ≡ 3X</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;"><span class="lhs">Result</span><span class="eq">=</span><span>X² + 3X + 3</span><span class="ans">= σ(X) ✓</span></div>
+                </div>
+            </div>
+            <div class="callout note">
+                <div class="body">The roots of σ(X) are X = 1 and X = 3, corresponding to α₁ and α₃ from sk. Step 7 confirms this by plugging each αⱼ into σ(X) and checking for zero.</div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 7 : ROOT FINDING -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="6">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">🎯</span> 7. Find the Error Positions — Root Evaluation</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 07</span> · PKE.Dec(sk, C₀) → e continued &nbsp;·&nbsp; root-finding using α from sk = (g(X), α)</div>
+            <div class="step-sub">Still inside <strong>PKE.Dec(sk, C₀)</strong>. Plug each secret address <strong>αⱼ</strong> (the second half of sk) into σ(X) = X² + 3X + 3. If the result is 0 (mod 7) that position carries an error. Once all roots are found, <strong>e is fully recovered</strong> — PKE.Dec is complete.</div>
+
+            <div class="stage">σ(X) = X² + 3X + 3 &nbsp;·&nbsp; evaluate at α₁=1, α₂=2, α₃=3, α₄=4</div>
+
+            <div class="math-block">
+                <div class="label">α₁ = 1</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">1²</span><span class="eq">=</span><span>1</span></div>
+                    <div class="row"><span class="lhs">3 × 1</span><span class="eq">=</span><span>3</span></div>
+                    <div class="row"><span class="lhs">constant</span><span class="eq">=</span><span>3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>1 + 3 + 3 = 7</span><span class="ans">→ 7 mod 7 = 0 &nbsp;✅ ERROR at position 1</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-block">
+                <div class="label">α₂ = 2</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">2²</span><span class="eq">=</span><span>4</span></div>
+                    <div class="row"><span class="lhs">3 × 2</span><span class="eq">=</span><span>6</span></div>
+                    <div class="row"><span class="lhs">constant</span><span class="eq">=</span><span>3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>4 + 6 + 3 = 13</span><span class="ans">→ 13 mod 7 = 6 &nbsp;❌ no error</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-block">
+                <div class="label">α₃ = 3</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">3²</span><span class="eq">=</span><span>9</span></div>
+                    <div class="row"><span class="lhs">3 × 3</span><span class="eq">=</span><span>9</span></div>
+                    <div class="row"><span class="lhs">constant</span><span class="eq">=</span><span>3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>9 + 9 + 3 = 21</span><span class="ans">→ 21 mod 7 = 0 &nbsp;✅ ERROR at position 3</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-block">
+                <div class="label">α₄ = 4</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">4²</span><span class="eq">=</span><span>16</span></div>
+                    <div class="row"><span class="lhs">3 × 4</span><span class="eq">=</span><span>12</span></div>
+                    <div class="row"><span class="lhs">constant</span><span class="eq">=</span><span>3</span></div>
+                    <div class="row" style="border-top:1px solid var(--line); margin-top:0.3rem; padding-top:0.3rem;">
+                        <span class="lhs">Sum</span><span class="eq">:</span><span>16 + 12 + 3 = 31</span><span class="ans">→ 31 mod 7 = 3 &nbsp;(31=4×7+3) &nbsp;❌ no error</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="callout pass" style="margin-top:0.5rem;">
+                <div class="body"><strong>Errors confirmed at positions 1 and 3</strong> — recovered error vector: e = [<span style="color:var(--coral); font-weight:700;">1</span>, 0, <span style="color:var(--coral); font-weight:700;">1</span>, 0]</div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="next" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 8 : SUCCESS -->
+    <!-- ============================================================ -->
+    <div class="step" data-step="7">
+        <div class="step-card">
+            <div class="step-title"><span class="emoji">🏁</span> 8. Remove the Errors — Message Recovered!</div>
+            <div class="fc-tag">← Flowchart <span class="fc-hi">Step 07</span> · PKE.Dec concluded — e recovered &nbsp;·&nbsp; <span style="color:#c08840;">Step 08 (re-encrypt check &amp; KDF) is KEM-only — not in this demo</span></div>
+            <div class="step-sub">Subtract the error vector <strong>e</strong> (the output of <strong>PKE.Dec(sk, C₀)</strong>) from the received ciphertext y (mod 7) to undo what the sender added in Step 4. In the real KEM, Step 08 would now re-encrypt e and derive session key K — skipped here as this is the inner PKE layer only.</div>
+
+            <div class="stage">c = y − e (mod 7) — position by position</div>
+            <div class="math-block">
+                <div class="label">y = [4, 6, 2, 0] &nbsp;·&nbsp; e = [1, 0, 1, 0]</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">pos 1</span><span class="eq">:</span><span>y[1] − e[1] = 4 − 1</span><span class="ans">= 3</span></div>
+                    <div class="row"><span class="lhs">pos 2</span><span class="eq">:</span><span>y[2] − e[2] = 6 − 0</span><span class="ans">= 6</span></div>
+                    <div class="row"><span class="lhs">pos 3</span><span class="eq">:</span><span>y[3] − e[3] = 2 − 1</span><span class="ans">= 1</span></div>
+                    <div class="row"><span class="lhs">pos 4</span><span class="eq">:</span><span>y[4] − e[4] = 0 − 0</span><span class="ans">= 0</span></div>
+                </div>
+            </div>
+
+            <div class="stage teal">Verify — does H · cᵀ = 0?</div>
+            <div class="math-block">
+                <div class="label">Check recovered c = [3, 6, 1, 0] against the public key H</div>
+                <div class="calc-chain">
+                    <div class="row"><span class="lhs">Row 1</span><span class="eq">:</span><span>4×3 + 3×6 + 5×1 + 5×0 = 12+18+5 = 35</span><span class="ans">→ 35 mod 7 = 0 ✓</span></div>
+                    <div class="row"><span class="lhs">Row 2</span><span class="eq">:</span><span>4×3 + 6×6 + 1×1 + 6×0 = 12+36+1 = 49</span><span class="ans">→ 49 mod 7 = 0 ✓</span></div>
+                </div>
+            </div>
+
+            <div style="background:#0f1c2a; border-radius:0.8rem; padding:1.2rem; border:1px solid #c9a034; text-align:center; margin-top:0.8rem;">
+                <div style="color:#f5dfa0; font-size:1.2rem; font-weight:600; font-family:var(--mono);">🎉 Original message recovered: &nbsp;c = [3, 6, 1, 0]</div>
+                <div style="color:#7a9abb; font-size:0.88rem; margin-top:0.6rem;">This matches exactly what the sender encoded in Step 4.</div>
+            </div>
+
+            <div class="callout gold" style="margin-top:1rem;">
+                <div class="body">
+                    <strong>Why could the owner do this instantly while the attacker is still searching?</strong><br>
+                    The private key (g(X), α) gives the owner a secret algebraic shortcut — the Extended Euclidean Algorithm on polynomials — that jumps straight to σ(X) in two steps. The attacker has no shortcut: they must test all C(n, t) ≈ 10²⁰⁰ combinations one by one.
+                </div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="prevStep()">← Previous</button>
+            <button class="restart" onclick="restartStep()">🔄 Restart</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- LEGEND -->
+    <!-- ============================================================ -->
+    <div class="legend">
+        <div class="legend-item"><span class="swatch input"></span> Input value</div>
+        <div class="legend-item"><span class="swatch output"></span> Result / answer</div>
+        <div class="legend-item"><span class="swatch error"></span> Error position</div>
+        <div class="legend-item"><span class="swatch success"></span> Valid / match</div>
+        <div class="legend-item"><span class="swatch formula"></span> Calculation block</div>
+    </div>
+
+    </div> <!-- close demo-body -->
+</div> <!-- close sheet -->
+
+<script>
+    let currentStep = 0;
+    const totalSteps = 8;
+
+    function updateUI() {
+        // steps
+        document.querySelectorAll('.step').forEach((el, idx) => {
+            el.classList.toggle('active', idx === currentStep);
+        });
+
+        // dots
+        document.querySelectorAll('.step-dot').forEach((dot, idx) => {
+            dot.classList.remove('active', 'done');
+            if (idx === currentStep) dot.classList.add('active');
+            else if (idx < currentStep) dot.classList.add('done');
+        });
+
+        // counter
+        document.getElementById('stepCounter').textContent = `Step ${currentStep+1} of ${totalSteps}`;
+
+        // buttons
+        const prevBtn = document.querySelector('.step.active .nav-buttons button:not(.next):not(.restart)');
+        const nextBtn = document.querySelector('.step.active .nav-buttons .next');
+        if (prevBtn) prevBtn.disabled = (currentStep === 0);
+        if (nextBtn) nextBtn.disabled = (currentStep === totalSteps - 1);
+
+        // top nav
+        updateTopNavs();
+    }
+
+    function scrollToStepTop() {
+        const demoBody = document.querySelector('.demo-body');
+        if (demoBody) {
+            demoBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function updateTopNavs() {
+        // Remove any existing top-nav bars first
+        document.querySelectorAll('.top-nav').forEach(el => el.remove());
+
+        // Insert a top nav into every visible step-card
+        document.querySelectorAll('.step.active .step-card').forEach(card => {
+            const bar = document.createElement('div');
+            bar.className = 'top-nav';
+
+            const isFirst = currentStep === 0;
+            const isLast  = currentStep === totalSteps - 1;
+
+            bar.innerHTML = `
+                <button ${isFirst ? 'disabled' : ''} onclick="prevStep()">← Previous</button>
+                ${isLast
+                    ? `<button class="restart top-restart" onclick="restartStep()">🔄 Restart</button>`
+                    : `<button class="next" onclick="nextStep()">Next →</button>`
+                }`;
+            card.insertBefore(bar, card.firstChild);
+        });
+    }
+
+    function nextStep() {
+        if (currentStep < totalSteps - 1) {
+            currentStep++;
+            updateUI();
+            scrollToStepTop();
+        }
+    }
+
+    function prevStep() {
+        if (currentStep > 0) {
+            currentStep--;
+            updateUI();
+            scrollToStepTop();
+        }
+    }
+
+    function restartStep() {
+        currentStep = 0;
+        updateUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+            e.preventDefault();
+            nextStep();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            prevStep();
+        }
+    });
+
+    updateUI();
+
+    // ── Listen for goToStep messages from index.html nav ─────────────
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'goToStep') {
+        const step = parseInt(e.data.step, 10);
+        if (!isNaN(step) && step >= 0 && step < totalSteps) {
+          currentStep = step;
+          updateUI();
+        }
+      }
+    });
+</script>
+
+<script>
+  function sendHeight() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      window.parent.postMessage({
+        type: 'resize',
+        id: id,
+        height: document.documentElement.scrollHeight
+      }, '*');
+    }
+  }
+  window.addEventListener('load', sendHeight);
+  new ResizeObserver(sendHeight).observe(document.body);
+</script>
+</body>
+</html>
