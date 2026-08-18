@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML-DSA-44 Visualizer</title>
+<link rel="stylesheet" href="/static/style.css?v=2">>
+</head>
+<body>
+<div id="app">
+<!-- TOP BAR -->
+<div id="topbar">
+  <h1>🔐 ML-DSA-44 Interactive Visualizer</h1>
+  <div class="zoom-controls">
+    <button onclick="zoom(-1)">A−</button>
+    <span id="zoom-label">140%</span>
+    <button onclick="zoom(1)">A+</button>
+    <button onclick="zoom(0)">Reset</button>
+  </div>
+</div>
+
+<div id="main-layout">
+<!-- ===== SIDEBAR ===== -->
+<div id="sidebar">
+<button class="panel-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">◀</button>
+
+<!-- 1. ABBREVIATIONS -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>📖 Abbreviations &amp; Definitions</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <div style="background:#f0f4f8;border:1px solid #cbd5e0;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:0.82em;color:#374151">
+    📎 All parameters reference <strong>NIST FIPS 204</strong> (ML-DSA Standard, August 2024).
+    Click any <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204</a> badge to open the official document.
+    Also see <a class="ref" href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">CSRC page</a> and
+    <a class="ref ref-purple" href="https://pq-crystals.org/dilithium/" target="_blank">Dilithium (predecessor)</a>.
+  </div>
+  <table>
+    <tr><th>Term</th><th>Full Form / Definition</th><th>Ref</th></tr>
+    <tr><td>ML-DSA</td><td>Module Lattice-based Digital Signature Algorithm — NIST post-quantum standard (FIPS 204)</td><td><a class="ref ref-green" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204</a></td></tr>
+    <tr><td>DSA</td><td>Digital Signature Algorithm — a cryptographic scheme to verify authenticity</td><td><a class="ref" href="https://csrc.nist.gov/publications/detail/fips/186/5/final" target="_blank">FIPS 186-5</a></td></tr>
+    <tr><td>PKI</td><td>Public Key Infrastructure — system managing public/private key pairs</td><td><a class="ref" href="https://csrc.nist.gov/glossary/term/public_key_infrastructure" target="_blank">NIST Glossary</a></td></tr>
+    <tr><td>SHAKE</td><td>Secure Hash Algorithm with Keccak Extendable-Output Function</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.202" target="_blank">FIPS 202 §6</a></td></tr>
+    <tr><td>SHA3</td><td>Secure Hash Algorithm 3 — family including SHAKE128, SHAKE256</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.202" target="_blank">FIPS 202</a></td></tr>
+    <tr><td>ρ (rho)</td><td>32-byte seed used to generate public matrix A via SHAKE128</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1</a></td></tr>
+    <tr><td>ρ′ (rho-prime)</td><td>64-byte seed used to generate secret vectors s₁ and s₂</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1</a></td></tr>
+    <tr><td>K</td><td>32-byte key used for signing randomness</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1</a></td></tr>
+    <tr><td>A</td><td>Public matrix of polynomials — k×ℓ = 4×4 for ML-DSA-44</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §4.2</a></td></tr>
+    <tr><td>s₁, s₂</td><td>Secret vectors with small coefficients (η=2), kept private</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1</a></td></tr>
+    <tr><td>t</td><td>Public key commitment: t = As₁ + s₂</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1</a></td></tr>
+    <tr><td>t₀, t₁</td><td>Low/high bits of t after Power2Round split</td><td><a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6</a></td></tr>
+    <tr><td>pk</td><td>Public Key = ρ ∥ t₁ → 1312 bytes</td><td><a class="ref ref-green" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 Table 1</a></td></tr>
+    <tr><td>sk</td><td>Secret Key = ρ ∥ K ∥ tr ∥ s₁ ∥ s₂ ∥ t₀ → 2560 bytes</td><td><a class="ref ref-green" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 Table 1</a></td></tr>
+    <tr><td>η (eta)</td><td>Bound on secret coefficients — η=2 for ML-DSA-44</td><td><a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 Table 1</a></td></tr>
+    <tr><td>q</td><td>Prime modulus = 8,380,417 for all ML-DSA variants</td><td><a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §2</a></td></tr>
+  </table>
+  </div>
+</div>
+
+<!-- 2. HISTORY -->
+<div class="section green collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>📜 History of Digital Signatures</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Before the internet, authenticating a document meant physically signing it. But how do you prove a digital file hasn't been changed — or that it really came from who it claims?</p>
+  <p><strong style="color:#15803d">1976 — Diffie &amp; Hellman</strong> introduced the concept of <em>public key cryptography</em>.</p>
+  <p><strong style="color:#15803d">1978 — RSA</strong> was the first practical digital signature scheme. Security relies on the difficulty of factoring large numbers.</p>
+  <p><strong style="color:#15803d">2016–2024 — Post-Quantum Era</strong>: Quantum computers threaten RSA and ECDSA. In 2024, <strong style="color:#15803d">ML-DSA (FIPS 204)</strong> became the new standard — based on hard lattice problems.</p>
+  </div>
+</div>
+
+<!-- 3. KEY GENERATION FLOW -->
+<div class="section cyan collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🔄 Key Generation Flow</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <div id="flow">
+    <div class="flow-step highlight">① Generate random seed ξ — 32 bytes</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step highlight">② SHAKE256(ξ) → ρ + ρ′ + K</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">③ SHAKE128(ρ) → Matrix A [4×4]</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">④ Sample s₁ from ρ′</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">⑤ Sample s₂ from ρ′</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step orange">⑥ Compute t = As₁ + s₂</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step orange">⑦ Power2Round(t) → t₁ + t₀</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step green">⑧ pk = ρ ∥ t₁ → 1312 bytes</div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step green">⑨ sk = ρ ∥ K ∥ tr ∥ s₁ ∥ s₂ ∥ t₀ → 2560 bytes</div>
+  </div>
+  <div style="margin-top:16px;text-align:center">
+    <button class="btn" id="btn-keygen" onclick="runKeyGen()">▶ Run Key Generation</button>
+  </div>
+  </div>
+</div>
+
+<!-- 3b. COMPLETE FLOW PLAIN-LANGUAGE GUIDE -->
+<div class="section cyan collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>📋 ML-DSA-44 Complete Flow — Plain Language Guide</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body" style="font-size:0.84em;line-height:1.7;color:#1e293b">
+
+    <!-- 1. Key Generation -->
+    <h3 style="color:#1d4ed8;margin-bottom:6px;margin-top:0">1. Key Generation</h3>
+    <p>First of all, a 32-byte random seed <strong>ξ</strong> is generated using a cryptographically secure random source provided by the operating system or hardware. This seed is then given to <strong>SHAKE256</strong>, which expands it into <strong>128 bytes</strong> of deterministic output, split into three parts:</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:6px 12px;flex:1;min-width:120px">
+        <strong>ρ</strong> — 32 bytes<br/><span style="color:#475569;font-size:0.9em">public seed → matrix A</span>
+      </div>
+      <div style="background:#fce7f3;border:1px solid #f9a8d4;border-radius:6px;padding:6px 12px;flex:1;min-width:120px">
+        <strong>ρ′</strong> — 64 bytes<br/><span style="color:#475569;font-size:0.9em">secret seed → s₁, s₂</span>
+      </div>
+      <div style="background:#fef9c3;border:1px solid #fbbf24;border-radius:6px;padding:6px 12px;flex:1;min-width:120px">
+        <strong>K</strong> — 32 bytes<br/><span style="color:#475569;font-size:0.9em">kept secret → used in signing</span>
+      </div>
+    </div>
+    <p><strong>Matrix A</strong> is generated from ρ using <em>ExpandA</em> (SHAKE128 with row/column indices). For ML-DSA-44, A is a <strong>4×4 matrix</strong> — 16 polynomials, each with 256 coefficients, giving <strong>4096 coefficients total</strong>. Every coefficient is taken modulo <em>q = 8,380,417</em>, so values lie in [0, 8,380,416].</p>
+    <p>The two <strong>secret vectors s₁ and s₂</strong> are generated from ρ′ using <em>ExpandS</em> (SHAKE256 + centered binomial distribution). With η = 2 for ML-DSA-44, coefficients are in {−2, −1, 0, 1, 2}. Each vector has 4 polynomials × 256 coefficients = <strong>1024 coefficients</strong>.</p>
+    <p>Alice then calculates <strong>t = As₁ + s₂</strong>. Since A is 4×4 and s₁ is 4×1, the result is a 4×1 vector — four polynomials with 256 coefficients each (<strong>1024 coefficients total</strong>).</p>
+    <p>Storing every t coefficient uncompressed would need 23 bits each (since q &lt; 2²³), giving 1024 × 23 / 8 = <strong>2944 bytes</strong> — unnecessarily large. So ML-DSA uses <strong>Power2Round</strong> to split each coefficient:</p>
+    <div style="background:#f1f5f9;border-left:3px solid #6366f1;border-radius:4px;padding:8px 12px;margin:8px 0;font-family:monospace;font-size:0.92em">
+      t = t₁ · 2<sup>d</sup> + t₀ &nbsp;(d = 13 for ML-DSA-44)
+    </div>
+    <p>t₁ holds the high bits (10 bits encoded per coefficient), t₀ holds the centered low bits (13 bits each). The <strong>public key</strong> is ρ ∥ t₁:</p>
+    <div style="background:#dcfce7;border:1px solid #16a34a;border-radius:6px;padding:8px 12px;margin:8px 0">
+      <strong>|pk| = 32 + (1024 × 10 / 8) = 32 + 1280 = <span style="color:#15803d">1312 bytes</span></strong>
+    </div>
+
+    <!-- 2. Private Key -->
+    <h3 style="color:#7c3aed;margin-top:16px;margin-bottom:6px">2. Private Key</h3>
+    <p>The private key stores ρ, K, tr, s₁, s₂, and t₀. After generating the public key, Alice computes <strong>tr = H(pk)</strong> producing 64 bytes. The sizes break down as:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:0.9em;margin:8px 0">
+      <tr style="background:#f1f5f9"><th style="text-align:left;padding:4px 8px;border:1px solid #cbd5e0">Component</th><th style="text-align:right;padding:4px 8px;border:1px solid #cbd5e0">Size</th><th style="padding:4px 8px;border:1px solid #cbd5e0">Encoding</th></tr>
+      <tr><td style="padding:4px 8px;border:1px solid #e2e8f0">ρ</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">32 bytes</td><td style="padding:4px 8px;border:1px solid #e2e8f0">raw</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:4px 8px;border:1px solid #e2e8f0">K</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">32 bytes</td><td style="padding:4px 8px;border:1px solid #e2e8f0">raw</td></tr>
+      <tr><td style="padding:4px 8px;border:1px solid #e2e8f0">tr = H(pk)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">64 bytes</td><td style="padding:4px 8px;border:1px solid #e2e8f0">raw</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:4px 8px;border:1px solid #e2e8f0">s₁ (η=2, 3 bits/coeff)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">384 bytes</td><td style="padding:4px 8px;border:1px solid #e2e8f0">1024 × 3 / 8</td></tr>
+      <tr><td style="padding:4px 8px;border:1px solid #e2e8f0">s₂ (η=2, 3 bits/coeff)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">384 bytes</td><td style="padding:4px 8px;border:1px solid #e2e8f0">1024 × 3 / 8</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:4px 8px;border:1px solid #e2e8f0">t₀ (13 bits/coeff)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">1664 bytes</td><td style="padding:4px 8px;border:1px solid #e2e8f0">1024 × 13 / 8</td></tr>
+    </table>
+    <div style="background:#ede9fe;border:1px solid #7c3aed;border-radius:6px;padding:8px 12px;margin:8px 0">
+      <strong>|sk| = 32 + 32 + 64 + 384 + 384 + 1664 = <span style="color:#6d28d9">2560 bytes</span></strong>
+    </div>
+
+    <!-- 3. Signing -->
+    <h3 style="color:#b91c1c;margin-top:16px;margin-bottom:6px">3. Signing Process</h3>
+    <p>Alice wants to sign message M. She first computes the <strong>message representative</strong> μ:</p>
+    <div style="background:#f1f5f9;border-left:3px solid #ef4444;border-radius:4px;padding:8px 12px;margin:6px 0;font-family:monospace;font-size:0.92em">μ = SHAKE256(tr ∥ M) → 64 bytes</div>
+    <p>Then she derives signing randomness ρ″ using K, a random 32-byte value <em>rnd</em>, and μ:</p>
+    <div style="background:#f1f5f9;border-left:3px solid #ef4444;border-radius:4px;padding:8px 12px;margin:6px 0;font-family:monospace;font-size:0.92em">ρ″ = SHAKE256(K ∥ rnd ∥ μ) → 64 bytes</div>
+    <p>Using ρ″, she generates the <strong>masking vector y</strong> (ExpandMask) — 4 polynomials, 256 coefficients each, with coefficients in [−γ₁+1, γ₁] where γ₁ = 2¹⁷ = 131,072.</p>
+    <p>She computes <strong>w = A·y</strong>, then decomposes it into high bits w₁ and low bits w₀. She encodes w₁ and hashes to get the <strong>challenge seed</strong>:</p>
+    <div style="background:#f1f5f9;border-left:3px solid #ef4444;border-radius:4px;padding:8px 12px;margin:6px 0;font-family:monospace;font-size:0.92em">c̃ = SHAKE256(μ ∥ Encode(w₁)) → 32 bytes</div>
+    <p>Then SampleInBall converts c̃ into the <strong>challenge polynomial c</strong>: 256 coefficients, exactly <strong>39 are ±1</strong> (τ = 39 for ML-DSA-44), the other 217 are zero.</p>
+    <p>The <strong>response vector</strong> is computed as: <code>z = y + c·s₁</code> — the masking y hides s₁ from any observer.</p>
+
+    <!-- 4. Hint -->
+    <h3 style="color:#d97706;margin-top:16px;margin-bottom:6px">4. Creating the Hint</h3>
+    <p>Alice computes the intermediate values c·s₂ and c·t₀, then forms:</p>
+    <div style="background:#f1f5f9;border-left:3px solid #f59e0b;border-radius:4px;padding:8px 12px;margin:6px 0;font-family:monospace;font-size:0.92em">r = w − c·s₂ + c·t₀<br/>h = MakeHint(−c·t₀, r)</div>
+    <p>MakeHint checks all 4 × 256 = <strong>1024 coefficient positions</strong>. For each position, hᵢ = 1 if the relevant high bits change when the correction is applied, otherwise hᵢ = 0. ML-DSA-44 allows at most <strong>ω = 80</strong> hint positions to be 1. The hint is encoded compactly as the positions where hᵢ = 1 plus 4 polynomial boundary values:</p>
+    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;margin:6px 0">
+      <strong>|h| = 80 + 4 = <span style="color:#b45309">84 bytes</span></strong>
+    </div>
+
+    <!-- 5. Final Signature -->
+    <h3 style="color:#15803d;margin-top:16px;margin-bottom:6px">5. Final Signature</h3>
+    <p>Alice assembles σ = (c̃ ∥ z ∥ h):</p>
+    <table style="width:100%;border-collapse:collapse;font-size:0.9em;margin:8px 0">
+      <tr style="background:#f1f5f9"><th style="text-align:left;padding:4px 8px;border:1px solid #cbd5e0">Component</th><th style="text-align:right;padding:4px 8px;border:1px solid #cbd5e0">Size</th></tr>
+      <tr><td style="padding:4px 8px;border:1px solid #e2e8f0">c̃ (challenge seed)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">32 bytes</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:4px 8px;border:1px solid #e2e8f0">z (response vector)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">2304 bytes</td></tr>
+      <tr><td style="padding:4px 8px;border:1px solid #e2e8f0">h (hint bits)</td><td style="text-align:right;padding:4px 8px;border:1px solid #e2e8f0">84 bytes</td></tr>
+    </table>
+    <div style="background:#dcfce7;border:1px solid #16a34a;border-radius:6px;padding:8px 12px;margin:6px 0">
+      <strong>|σ| = 32 + 2304 + 84 = <span style="color:#15803d">2420 bytes</span></strong>
+    </div>
+
+    <!-- 6. Verification -->
+    <h3 style="color:#0369a1;margin-top:16px;margin-bottom:6px">6. How Bob Verifies the Signature</h3>
+    <p>Bob receives M, pk, and σ = (c̃, z, h). He also has pk = (ρ, t₁). His steps:</p>
+    <ol style="margin-left:18px;line-height:1.9;margin-top:6px">
+      <li>Recompute <strong>μ = H(tr ∥ M)</strong> using tr derived from pk.</li>
+      <li>Run <strong>c = SampleInBall(c̃)</strong> — deterministic, produces the same c as Alice.</li>
+      <li>Compute the approximate commitment: <strong>w′ = A·z − c·t₁·2<sup>d</sup></strong> (d = 13). Bob does not need s₁, s₂, or t₀ — the public t₁ and the math make the secret terms cancel approximately.</li>
+      <li>Apply the hint: <strong>w₁′ = UseHint(h, w′)</strong>. Each hint bit tells Bob which coefficients need their high-bit value corrected to account for the t₁/t₀ split.</li>
+      <li>Recompute the challenge seed: <strong>c̃′ = H(μ ∥ Encode(w₁′))</strong>.</li>
+      <li>Compare c̃′ with the c̃ from the signature, and check all norm and validity bounds.</li>
+    </ol>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <div style="background:#dcfce7;border:1px solid #16a34a;border-radius:6px;padding:8px 14px;flex:1;min-width:140px;text-align:center">
+        <div style="color:#15803d;font-size:1.1em;font-weight:bold">✓ Accept</div>
+        <div style="color:#374151;font-size:0.82em;margin-top:4px">if c̃′ = c̃ and all checks pass</div>
+      </div>
+      <div style="background:#fee2e2;border:1px solid #ef4444;border-radius:6px;padding:8px 14px;flex:1;min-width:140px;text-align:center">
+        <div style="color:#b91c1c;font-size:1.1em;font-weight:bold">✗ Reject</div>
+        <div style="color:#374151;font-size:0.82em;margin-top:4px">if c̃′ ≠ c̃ or any check fails</div>
+      </div>
+    </div>
+    <p style="margin-top:10px;font-size:0.85em;color:#64748b"><strong>The verifier never needs the secret key.</strong> Even a quantum computer cannot forge this signature.</p>
+
+  </div>
+</div>
+
+<!-- 4. SEED EXPANSION -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🌱 Seed ξ → SHAKE256 → (ρ, ρ′, K)</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Key generation starts with a random 32-byte seed ξ. SHAKE256 expands it into <strong>128 bytes</strong> total, split as: <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1 Alg.1</a></p>
+  <div class="info-row">
+    <div class="info-card"><div class="val">ρ</div><div class="lbl">32 bytes — public seed for matrix A <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">§5.1</a></div></div>
+    <div class="info-card"><div class="val">ρ′</div><div class="lbl">64 bytes — secret seed for s₁, s₂ <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">§5.1</a></div></div>
+    <div class="info-card"><div class="val">K</div><div class="lbl">32 bytes — signing key <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">§5.1</a></div></div>
+  </div>
+  <div class="out-box" id="out-seeds">[ Run key generation to see values ]</div>
+  </div>
+</div>
+
+<!-- 5. MATRIX A -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🧮 Matrix A — Generated via SHAKE128</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Matrix A is 4×4 polynomials. Each polynomial has 256 coefficients in [0, 8,380,416]. <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §4.2</a></p>
+  <button class="btn" id="btn-matA" onclick="generateMatrixA()" disabled>Generate Matrix A</button>
+  <div class="out-box matrix" id="out-matA">[ Run key generation first ]</div>
+  <p style="font-size:0.75em;color:#6b7280;margin-top:6px">↑ Compact view. See Main Panel → for full column vectors.</p>
+  </div>
+</div>
+
+<!-- 6. SECRETS -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🔑 Secret Vectors s₁ and s₂</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Sampled from centered binomial distribution. All coefficients in [-2, 2]. <a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1, η=2</a></p>
+  <button class="btn" id="btn-secrets" onclick="showSecrets()" disabled>Show s₁ and s₂</button>
+  <div class="out-box" id="out-s1">[ Generate matrix A first ]</div>
+  <div class="out-box" id="out-s2" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<!-- 7. t = AS1+S2 -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🔢 t = A·s₁ + s₂</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <div class="formula">t = A · s₁ + s₂  (mod q, mod x²⁵⁶ + 1) <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.1</a></div>
+  <button class="btn" id="btn-t" onclick="showT()" disabled>Compute t</button>
+  <div class="out-box" id="out-As1">[ Show secrets first ]</div>
+  <div class="out-box" id="out-t" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<!-- 8. POWER2ROUND -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>✂️ Power2Round → t₀ and t₁</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Split each coefficient into high bits (t₁) and low bits (t₀). <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6 Power2Round</a></p>
+  <button class="btn" id="btn-p2r" onclick="showPower2Round()" disabled>Show Power2Round</button>
+  <div class="out-box" id="out-t1">[ Compute t first ]</div>
+  <div class="out-box" id="out-t0" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<!-- 9. KEYS -->
+<div class="section green collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🔑 Public Key &amp; Secret Key</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <h3>Public Key (pk) = ρ ∥ t₁</h3>
+  <div class="key-display" id="out-pk">[ Run all steps ]</div>
+  <h3 style="margin-top:14px">Secret Key (sk) = ρ ∥ K ∥ tr ∥ s₁ ∥ s₂ ∥ t₀</h3>
+  <div class="key-display" id="out-sk">[ Run all steps ]</div>
+  </div>
+</div>
+
+<!-- 10. SIGNING PROCESS -->
+<div class="section red collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>✍️ Signing Process — Alice Signs a Message</h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Alice has generated her keys. Now she signs a message. The signature proves she used her secret key without revealing it.</p>
+
+  <!-- Signing flow diagram -->
+  <h3 style="margin-bottom:10px;color:#991b1b">Signing Flow — FIPS 204 §5.2</h3>
+  <div id="sign-flow" style="display:flex;flex-direction:column;align-items:center;margin-bottom:16px">
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:4px">
+      <div style="background:#fef9c3;border:1px solid #fbbf24;border-radius:6px;padding:6px 12px;font-size:0.8em;color:#713f12">
+        <strong>tr</strong> = SHAKE256(pk) — 64 bytes<br/>
+        <span style="font-size:0.85em;color:#92400e">pk = ρ ∥ t₁ (1312 bytes of public key)</span>
+      </div>
+      <div style="background:#fef9c3;border:1px solid #fbbf24;border-radius:6px;padding:6px 12px;font-size:0.8em;color:#713f12">
+        <strong>M</strong> = message bytes<br/>
+        <span style="font-size:0.85em;color:#92400e">any length, UTF-8 encoded</span>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step highlight">① μ = SHAKE256(tr ∥ M) → 64 bytes<br/><span style="font-size:0.8em;opacity:0.8">binds signature to both pk and message</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step highlight">② ρ″ = SHAKE256(K ∥ rnd ∥ μ) → 64 bytes<br/><span style="font-size:0.8em;opacity:0.8">deterministic signing randomness</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">③ y ← SampleUniform(ρ″)<br/><span style="font-size:0.8em">4 polys, coeffs ∈ [−γ₁+1, γ₁], γ₁=2¹⁷=131072</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">④ w = A·y (mod q)<br/>w₁ = HighBits(w, 2γ₂) &nbsp;|&nbsp; w₀ = LowBits(w, 2γ₂)<br/><span style="font-size:0.8em">γ₂ = (q−1)/88 = 95232</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step orange">⑤ c̃ = SHAKE256(μ ∥ w₁) → 32 bytes<br/><span style="font-size:0.8em">Fiat-Shamir challenge hash</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step orange">⑥ c = SampleInBall(c̃, τ=39)<br/><span style="font-size:0.8em">sparse poly: τ=39 nonzeros (±1), 217 zeros</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step orange">⑦ c·s₁ then z = y + c·s₁<br/><span style="font-size:0.8em">‖c·s₁‖∞ ≤ τ·η = 39·2 = 78</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step" style="background:#fef9c3;border-color:#fbbf24;color:#713f12">⑧ Check ‖z‖∞ &lt; γ₁ − β = 131072 − 78 = 130994<br/><span style="font-size:0.8em">REJECT → restart from ③ if too large</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step">⑨ Compute: w − c·s₂, w − c·s₂ + c·t₀<br/>h = MakeHint(−c·t₀, w − c·s₂ + c·t₀)<br/><span style="font-size:0.8em">hint marks where HighBits(r) ≠ HighBits(r+z)</span></div>
+    <div class="flow-arrow"></div>
+    <div class="flow-step green">⑩ σ = c̃ ∥ z ∥ h → 2420 bytes</div>
+  </div>
+
+  <h3>Input Message</h3>
+  <p>Enter the message Alice will sign:</p>
+  <textarea id="sign-message" placeholder="Enter message to sign..." style="width:100%;min-height:80px;background:#f0f4f8;border:1px solid #cbd5e0;border-radius:6px;padding:10px;color:#1a202c;font-family:monospace;font-size:0.85em;resize:vertical"></textarea>
+  <button class="btn" id="btn-start-sign" onclick="startSigning()" disabled>▶ Start Signing</button>
+  </div>
+</div>
+
+<!-- 11. STEP 1: μ (mu) -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>① Compute μ = SHAKE256(tr ∥ M) <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2 Alg.2</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p><code>μ (mu)</code> is the message representative — a 64-byte hash binding the signature to both the message and the public key.</p>
+  <div class="formula">μ = SHAKE256( tr ∥ message )<br/>where tr = SHAKE256(pk)</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">Input</div><div class="lbl">tr (64 bytes) + message (any length)</div></div>
+    <div class="info-card"><div class="val">Output</div><div class="lbl">μ — 64 bytes</div></div>
+  </div>
+  <button class="btn" id="btn-mu" onclick="computeMu()" disabled>Compute μ</button>
+  <div class="out-box" id="out-mu">[ Start signing first ]</div>
+  </div>
+</div>
+
+<!-- 12. STEP 2: ρ″ -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>② Generate Signing Randomness ρ″ <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2 Alg.2</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p><code>ρ″</code> is a 64-byte deterministic seed for the masking vector y. Derived from K and μ — no weak RNG risk.</p>
+  <div class="formula">ρ″ = SHAKE256( K ∥ rnd ∥ μ )</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">K</div><div class="lbl">32 bytes — from secret key</div></div>
+    <div class="info-card"><div class="val">μ</div><div class="lbl">64 bytes — message hash</div></div>
+    <div class="info-card"><div class="val">ρ″</div><div class="lbl">64 bytes — signing randomness</div></div>
+  </div>
+  <button class="btn" id="btn-rhodouble" onclick="computeRhoDouble()" disabled>Generate ρ″</button>
+  <div class="out-box" id="out-rhodouble">[ Compute μ first ]</div>
+  </div>
+</div>
+
+<!-- 13. STEP 3: y -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>③ Sample Masking Vector y <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2, γ₁=2¹⁷</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>4 polynomials, each with 256 coefficients in [−γ₁+1, γ₁] = [−131071, 131072]. Acts as a one-time pad to hide s₁.</p>
+  <div class="formula">y[i] = SampleUniform( SHAKE256(ρ″ ∥ i) )</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">4</div><div class="lbl">polynomials</div></div>
+    <div class="info-card"><div class="val">256</div><div class="lbl">coeffs per poly</div></div>
+    <div class="info-card"><div class="val">±131072</div><div class="lbl">coefficient range</div></div>
+  </div>
+  <button class="btn" id="btn-y" onclick="sampleY()" disabled>Sample y</button>
+  <div class="out-box" id="out-y">[ Generate ρ″ first ]</div>
+  </div>
+</div>
+
+<!-- 14. STEP 4: w and w₁ -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>④ Compute w = A·y → w₁ = HighBits(w) <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6 HighBits</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <div class="formula">w = A · y  (mod q)<br/>w₁[i] = HighBits(w[i], γ₂)</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">w</div><div class="lbl">4 polynomials, coeffs ∈ [0, q-1]</div></div>
+    <div class="info-card"><div class="val">w₁</div><div class="lbl">4 polynomials, compressed high bits</div></div>
+  </div>
+  <button class="btn" id="btn-w" onclick="computeW()" disabled>Compute w and w₁</button>
+  <div class="out-box" id="out-w">[ Sample y first ]</div>
+  <div class="out-box" id="out-w1" style="margin-top:6px">[ w₁ will appear here ]</div>
+  </div>
+</div>
+
+<!-- 15. STEP 5: c̃ -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑤ Compute Challenge Hash c̃ = SHAKE256(μ ∥ w₁) <a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Fiat-Shamir transform — turns an interactive proof into a non-interactive signature. The challenge is derived from the transcript, not sent by a verifier.</p>
+  <div class="formula">c̃ = SHAKE256( μ ∥ w₁ , 32 bytes )</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">Input</div><div class="lbl">μ (64B) + w₁ (compressed)</div></div>
+    <div class="info-card"><div class="val">Output</div><div class="lbl">c̃ — 32 bytes (256 bits)</div></div>
+  </div>
+  <button class="btn" id="btn-ctilde" onclick="computeCtilde()" disabled>Compute c̃</button>
+  <div class="out-box" id="out-ctilde">[ Compute w₁ first ]</div>
+  </div>
+</div>
+
+<!-- 16. STEP 6: c -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑥ Sample Challenge Polynomial c = SampleInBall(c̃) <a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6 Alg.7, τ=39</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Sparse polynomial — exactly <strong>39 non-zero coefficients</strong> (±1), 217 zeros. Per FIPS 204 Table 1, τ=39 for ML-DSA-44.</p>
+  <div class="formula">c = SampleInBall(c̃, τ=39)<br/>→ 256 coeffs: 39 are ±1, 217 are 0</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">39</div><div class="lbl">non-zero (±1), τ=39 ML-DSA-44</div></div>
+    <div class="info-card"><div class="val">217</div><div class="lbl">zeros</div></div>
+  </div>
+  <button class="btn" id="btn-c" onclick="sampleC()" disabled>Sample c</button>
+  <div class="out-box" id="out-c">[ Compute c̃ first ]</div>
+  </div>
+</div>
+
+<!-- 17. STEP 7: z -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑦ Compute Response z = y + c·s₁ <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2 Alg.2</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>The response vector. The masking y hides s₁ — even though z is public, s₁ cannot be extracted from it.</p>
+  <div class="formula">z = y + c · s₁  (mod q)</div>
+  <button class="btn" id="btn-z" onclick="computeZ()" disabled>Compute z</button>
+  <div class="out-box" id="out-z">[ Sample c first ]</div>
+  </div>
+</div>
+
+<!-- 18. STEP 8: Bound check -->
+<div class="section yellow collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑧ Check Bounds — Reject if Needed <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2, γ₁-β</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <div class="formula">if ‖z‖∞ ≥ γ₁ - β  → REJECT, restart from step ③</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">γ₁ - β</div><div class="lbl">= 130,994 — max allowed (ML-DSA-44)</div></div>
+    <div class="info-card"><div class="val">~2-4%</div><div class="lbl">rejection rate</div></div>
+  </div>
+  <button class="btn" id="btn-check" onclick="checkBounds()" disabled>Check Bounds</button>
+  <div class="out-box" id="out-check">[ Compute z first ]</div>
+  </div>
+</div>
+
+<!-- 19. STEP 9: h (hints) -->
+<div class="section collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑨ Compute Hint Bits h = MakeHint(...) <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6 Alg.8</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <p>Sparse bit vector helping the verifier correct rounding errors. At most 80 hints across 4 polynomials.</p>
+  <div class="formula">h = MakeHint( -c·t₀, w - c·s₂ + c·t₀ )</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">~20-40</div><div class="lbl">typical # of hints</div></div>
+    <div class="info-card"><div class="val">84 bytes</div><div class="lbl">encoded size</div></div>
+  </div>
+  <button class="btn" id="btn-h" onclick="computeHints()" disabled>Compute Hints h</button>
+  <div class="out-box" id="out-h">[ Check bounds first ]</div>
+  </div>
+</div>
+
+<!-- 20. STEP 10: Final signature -->
+<div class="section green collapsed">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑩ Assemble Signature σ = (c̃ ∥ z ∥ h) <a class="ref ref-green" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.2, 2420 bytes</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+  <div class="formula">σ = c̃ ∥ z ∥ h</div>
+  <div class="info-row">
+    <div class="info-card"><div class="val">c̃</div><div class="lbl">32 bytes — challenge seed</div></div>
+    <div class="info-card"><div class="val">z</div><div class="lbl">2304 bytes — response</div></div>
+    <div class="info-card"><div class="val">h</div><div class="lbl">84 bytes — hint bits</div></div>
+    <div class="info-card"><div class="val" style="color:#15803d">2420</div><div class="lbl">bytes total</div></div>
+  </div>
+  <h3 style="margin-top:14px">What the Verifier Does</h3>
+  <ol style="margin-left:20px;color:#374151;line-height:1.8;margin-top:8px">
+    <li>Recompute μ = SHAKE256(tr ∥ M) using pk</li>
+    <li>Extract c̃, z, h from σ</li>
+    <li>Recompute c = SampleInBall(c̃)</li>
+    <li>Compute w' = A·z - c·t₁·2^d</li>
+    <li>Use hints h to correct w' → get w₁'</li>
+    <li>Recompute c̃' = SHAKE256(μ ∥ w₁')</li>
+    <li>Check if c̃' = c̃ → valid ✓</li>
+  </ol>
+  <p style="margin-top:12px"><strong style="color:#15803d">The verifier never needs the secret key!</strong></p>
+  <button class="btn" id="btn-sig" onclick="assembleSignature()" disabled>Assemble Signature</button>
+  <div class="key-display" id="out-sig">[ Compute hints first ]</div>
+  <div style="margin-top:16px;padding:12px;background:#dcfce7;border:1px solid #16a34a;border-radius:8px">
+    <div style="color:#15803d;font-weight:bold;margin-bottom:6px">✓ Signature Complete</div>
+    <div style="color:#374151;font-size:0.85em;line-height:1.6">
+      Alice can now send (message, signature) to Bob. Even a quantum computer cannot forge this signature.
+    </div>
+  </div>
+  </div>div>
+</div>
+
+
+<!-- ===== BOB'S VERIFICATION FLOW ===== -->
+
+<!-- START VERIFICATION BUTTON — always visible, outside any collapsible section -->
+<div style="background:#dbeafe;border:2px solid #3b82f6;border-radius:10px;padding:14px 16px;margin-bottom:14px;margin-right:22px;position:relative;z-index:60">
+  <div style="color:#1e3a5f;font-weight:bold;font-size:0.95em;margin-bottom:4px">🔍 Bob's Verification</div>
+  <div style="color:#374151;font-size:0.82em;margin-bottom:10px">
+    Complete all 10 signing steps above first, then click to run Bob's 6-step verification using only Alice's public key.
+  </div>
+  <button class="btn" id="btn-start-verify" onclick="startVerifying()" style="background:#1d4ed8;width:100%;font-size:0.9em;padding:9px;position:relative;z-index:61">
+    🔍 Start Bob's Verification
+  </button>
+</div>
+
+<!-- 21. VERIFICATION INTRO + FLOW DIAGRAM -->
+<div class="section cyan">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>🔍 Bob's Verification Flow <a class="ref ref-green" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.3</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <p>Bob receives <strong>(M, pk, σ)</strong> where the signature σ = (c̃, z, h). He uses only Alice's <strong>public key</strong> — never the secret key.</p>
+
+    <h3 style="margin-bottom:10px;color:#0369a1">Verification Flow — FIPS 204 §5.3 Alg.3</h3>
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:16px">
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:4px">
+        <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:6px 12px;font-size:0.8em;color:#1e3a5f">
+          <strong>pk</strong> = ρ ∥ t₁ — 1312 bytes<br/>
+          <span style="font-size:0.85em;color:#475569">tr = SHAKE256(pk) derived from pk</span>
+        </div>
+        <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:6px 12px;font-size:0.8em;color:#1e3a5f">
+          <strong>σ</strong> = c̃ ∥ z ∥ h — 2420 bytes<br/>
+          <span style="font-size:0.85em;color:#475569">received from Alice</span>
+        </div>
+        <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:6px 12px;font-size:0.8em;color:#1e3a5f">
+          <strong>M</strong> = message<br/>
+          <span style="font-size:0.85em;color:#475569">received from Alice</span>
+        </div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-step highlight">⑪ μ = SHAKE256(tr ∥ M) → 64 bytes<br/><span style="font-size:0.8em;opacity:0.8">same as Alice's step ①</span></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-step highlight">⑫ c = SampleInBall(c̃, τ=39)<br/><span style="font-size:0.8em;opacity:0.8">deterministic — same c̃ → same c</span></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-step orange">⑬ w′ = A·z − c·t₁·2<sup>d</sup><br/><span style="font-size:0.8em">d=13, uses only public A, z, c, t₁</span></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-step orange">⑭ w₁′ = UseHint(h, w′)<br/><span style="font-size:0.8em">corrects rounding with hint bits h</span></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-step orange">⑮ c̃′ = SHAKE256(μ ∥ Encode(w₁′)) → 32 bytes</div>
+      <div class="flow-arrow"></div>
+      <div class="flow-step green">⑯ Accept if c̃′ = c̃ and ‖z‖∞ &lt; γ₁ − β</div>
+    </div>
+
+    <div style="background:#f0f4f8;border:1px solid #cbd5e0;border-radius:6px;padding:10px 12px;font-size:0.82em;color:#374151;margin-top:4px">
+      <strong>Complete the signing steps first</strong> — the "🔍 Start Bob's Verification" button appears at the bottom of step ⑩ (Assemble Signature) once signing is complete.
+    </div>
+  </div>
+</div>
+
+<!-- 22. STEP ⑪: μ -->
+<div class="section" id="sec-verif-mu" style="margin-right:22px;position:relative;z-index:60">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑪ Bob Recomputes μ = SHAKE256(tr ∥ M) <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.3</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <p>Bob derives tr from Alice's public key, then hashes it together with M — exactly as Alice did in signing step ①. No secret information is used.</p>
+    <div class="formula">μ = SHAKE256( tr ∥ M )<br/>where tr = SHAKE256(pk),  pk = ρ ∥ t₁</div>
+    <div class="info-row">
+      <div class="info-card"><div class="val">Input</div><div class="lbl">tr (64 B, public) + M</div></div>
+      <div class="info-card"><div class="val">Output</div><div class="lbl">μ — 64 bytes</div></div>
+    </div>
+    <button class="btn" id="btn-verif-mu" onclick="verifMu()">⑪ Recompute μ</button>
+    <div class="out-box" id="out-verif-mu">[ Start verification first ]</div>
+  </div>
+</div>
+
+<!-- 23. STEP ⑫: c -->
+<div class="section" id="sec-verif-c" style="margin-right:22px;position:relative;z-index:60">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑫ Bob Reconstructs c = SampleInBall(c̃) <a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6 Alg.7</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <p>Bob takes c̃ directly from the signature σ and runs SampleInBall — the same deterministic function Alice used. Since c̃ is identical, the resulting c polynomial is identical.</p>
+    <div class="formula">c = SampleInBall( c̃, τ=39 )<br/>c̃ extracted from σ = (c̃ ∥ z ∥ h)</div>
+    <div class="info-row">
+      <div class="info-card"><div class="val">c̃</div><div class="lbl">32 bytes from σ</div></div>
+      <div class="info-card"><div class="val">39</div><div class="lbl">non-zero coeffs (±1)</div></div>
+      <div class="info-card"><div class="val">217</div><div class="lbl">zero coefficients</div></div>
+    </div>
+    <button class="btn" id="btn-verif-c" onclick="verifC()">⑫ Reconstruct c</button>
+    <div class="out-box" id="out-verif-c">[ Recompute μ first ]</div>
+  </div>
+</div>
+
+<!-- 24. STEP ⑬: w′ -->
+<div class="section" id="sec-verif-wprime" style="margin-right:22px;position:relative;z-index:60">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑬ Bob Computes w′ = A·z − c·t₁·2<sup>d</sup> <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.3</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <p>This is the key step. Bob approximates Alice's original commitment w using only public values — he never needs s₁, s₂, or t₀.</p>
+    <div class="formula">w′ = A·z − c·t₁·2<sup>d</sup>  (d = 13, mod q)</div>
+    <p style="font-size:0.82em;color:#475569;margin-top:4px">Why this works: z = y + c·s₁, so A·z = A·y + c·A·s₁ = w + c·(t − s₂). Since t = t₁·2<sup>d</sup> + t₀, substituting gives w′ ≈ w up to the small t₀ term corrected by hints.</p>
+    <div class="info-row">
+      <div class="info-card"><div class="val">A</div><div class="lbl">from ρ (public)</div></div>
+      <div class="info-card"><div class="val">z</div><div class="lbl">from σ (public)</div></div>
+      <div class="info-card"><div class="val">t₁</div><div class="lbl">from pk (public)</div></div>
+    </div>
+    <button class="btn" id="btn-verif-wprime" onclick="verifWPrime()">⑬ Compute w′</button>
+    <div class="out-box" id="out-verif-wprime">[ Reconstruct c first ]</div>
+  </div>
+</div>
+
+<!-- 25. STEP ⑭: UseHint -->
+<div class="section" id="sec-verif-w1prime" style="margin-right:22px;position:relative;z-index:60">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑭ Bob Applies Hints: w₁′ = UseHint(h, w′) <a class="ref" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §6 Alg.12</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <p>Because t was split into t₁ and t₀, some high-bit information in w′ may be off by one. The hint bits h — packed into 84 bytes in σ — tell Bob exactly which positions to correct.</p>
+    <div class="formula">UseHint(h, r, 2γ₂):<br/>if hᵢ = 1 and r₀ &gt; 0: r₁ = (r₁ + 1) mod m<br/>if hᵢ = 1 and r₀ ≤ 0: r₁ = (r₁ − 1) mod m<br/>m = (q−1)/(2γ₂) = 88  for ML-DSA-44</div>
+    <div class="info-row">
+      <div class="info-card"><div class="val">h</div><div class="lbl">84 bytes from σ</div></div>
+      <div class="info-card"><div class="val">≤80</div><div class="lbl">hint positions (ω=80)</div></div>
+      <div class="info-card"><div class="val">w₁′</div><div class="lbl">corrected high bits</div></div>
+    </div>
+    <button class="btn" id="btn-verif-w1prime" onclick="verifW1Prime()">⑭ Apply Hints</button>
+    <div class="out-box" id="out-verif-w1prime">[ Compute w′ first ]</div>
+  </div>
+</div>
+
+<!-- 26. STEP ⑮: c̃′ -->
+<div class="section" id="sec-verif-ctilde" style="margin-right:22px;position:relative;z-index:60">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑮ Bob Recomputes c̃′ = SHAKE256(μ ∥ w₁′) <a class="ref ref-purple" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.3</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <p>Bob recomputes the challenge seed using his recovered μ and w₁′. If the signature is genuine, this will exactly equal the c̃ Alice placed in σ.</p>
+    <div class="formula">c̃′ = SHAKE256( μ ∥ Encode(w₁′) ) → 32 bytes</div>
+    <div class="info-row">
+      <div class="info-card"><div class="val">Input</div><div class="lbl">μ (64 B) + w₁′</div></div>
+      <div class="info-card"><div class="val">Output</div><div class="lbl">c̃′ — 32 bytes</div></div>
+    </div>
+    <button class="btn" id="btn-verif-ctilde" onclick="verifCtilde()">⑮ Recompute c̃′</button>
+    <div class="out-box" id="out-verif-ctilde">[ Apply hints first ]</div>
+  </div>
+</div>
+
+<!-- 27. STEP ⑯: Final verdict -->
+<div class="section green" id="sec-verif-result" style="margin-right:22px;position:relative;z-index:60">
+  <div class="section-header" onclick="toggleSection(this)">
+    <h2>⑯ Final Verdict — Accept or Reject <a class="ref ref-green" href="https://doi.org/10.6028/NIST.FIPS.204" target="_blank">FIPS 204 §5.3</a></h2>
+    <span class="section-toggle">▼</span>
+  </div>
+  <div class="section-body">
+    <div class="formula">Accept iff:<br/>① c̃′ = c̃  (challenge seeds match)<br/>② ‖z‖∞ &lt; γ₁ − β = 130,994</div>
+    <div class="info-row">
+      <div class="info-card"><div class="val">c̃′ = c̃?</div><div class="lbl">challenge must match</div></div>
+      <div class="info-card"><div class="val">‖z‖∞</div><div class="lbl">&lt; γ₁ − β = 130,994</div></div>
+    </div>
+    <button class="btn" id="btn-verif-result" onclick="verifResult()">⑯ Verify Signature</button>
+    <div class="out-box" id="out-verif-result">[ Recompute c̃′ first ]</div>
+  </div>
+</div>
+
+</div><!-- end sidebar -->
+
+<!-- ===== MAIN PANEL ===== -->
+<div id="mainpanel">
+<button class="panel-toggle" id="mainpanel-toggle" onclick="toggleMainPanel()" title="Collapse main panel">▶</button>
+
+<!-- Sticky Title Bar -->
+<div id="mp-titlebar">
+  <h2>📊 Main Visualization Panel</h2>
+  <span id="api-status" class="loading">connecting...</span>
+</div>
+
+<!-- Scrollable Content -->
+<div id="mp-content">
+  <p style="font-size:0.8em;color:#6b7280;margin-bottom:16px">Live column vectors from backend API. Each matrix scrolls horizontally ←→ and vertically ↑↓</p>
+
+  <!-- Seeds -->
+  <div class="mp-section" id="mp-seeds" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>🌱 Seed Expansion</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div class="mp-label">ξ (xi):</div><div class="out-box" id="mp-xi" style="max-height:40px"></div>
+    <div class="mp-label">ρ (rho):</div><div class="out-box" id="mp-rho" style="max-height:40px"></div>
+    <div class="mp-label">ρ′ (rho-prime):</div><div class="out-box" id="mp-rhop" style="max-height:40px"></div>
+    <div class="mp-label">K:</div><div class="out-box" id="mp-K" style="max-height:40px"></div>
+    </div>
+  </div>
+
+  <!-- Matrix A -->
+  <div class="mp-section" id="mp-matA-section" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>🧮 Matrix A — 16 Column Vectors</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <p style="font-size:0.75em;color:#6b7280;margin-bottom:4px">← Scroll horizontally → Each column = 256 coefficients</p>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-matA-grid"></div></div>
+    <div class="mp-size" id="mp-matA-size"></div>
+    </div>
+  </div>
+
+  <!-- Secrets -->
+  <div class="mp-section" id="mp-secrets-section" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>🔑 Secret Vectors s₁ and s₂</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div class="mp-label">s₁ — 4 column vectors:</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-s1-grid"></div></div>
+    <div class="mp-label">s₂ — 4 column vectors:</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-s2-grid"></div></div>
+    </div>
+  </div>
+
+  <!-- t -->
+  <div class="mp-section" id="mp-t-section" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>🔢 t = As₁ + s₂ and Power2Round</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div class="mp-label">t:</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-t-grid"></div></div>
+    <div class="mp-label">t₁ (high bits):</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-t1-grid"></div></div>
+    <div class="mp-label">t₀ (low bits):</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-t0-grid"></div></div>
+    </div>
+  </div>
+
+  <!-- Keys -->
+  <div class="mp-section" id="mp-keys-section" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>📦 Generated Keys</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px;background:#f0f4f8;border:1px solid #16a34a;border-radius:8px;padding:12px">
+        <div style="color:#15803d;font-size:1.3em;font-weight:bold">Public Key</div>
+        <div style="color:#92400e;font-size:1.5em;font-weight:bold;margin-top:6px">1312 bytes</div>
+        <div style="color:#6b7280;font-size:0.72em">ρ + t₁</div>
+      </div>
+      <div style="flex:1;min-width:180px;background:#f0f4f8;border:1px solid #dc2626;border-radius:8px;padding:12px">
+        <div style="color:#991b1b;font-size:1.3em;font-weight:bold">Secret Key</div>
+        <div style="color:#92400e;font-size:1.5em;font-weight:bold;margin-top:6px">2560 bytes</div>
+        <div style="color:#6b7280;font-size:0.72em">ρ+K+tr+s₁+s₂+t₀</div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div id="mp-empty" style="text-align:center;padding:40px;color:#94a3b8">
+    <div style="font-size:3em">🔐</div>
+    <div style="margin-top:10px;font-size:0.9em">Run key generation to see live values</div>
+  </div>
+
+  <!-- ── SIGNING MAIN PANEL — individual collapsible sub-sections ── -->
+  <div class="mp-section red" id="mp-sign-section" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>✍️ Signing — Started</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div class="mp-label">Message being signed:</div>
+    <div class="out-box" id="mp-sign-msg" style="max-height:40px;color:#92400e"></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-mu" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>① μ = SHAKE256(tr ∥ message) — 64 bytes</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-mu-inputs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+    <div class="mp-label">μ (output — 64 bytes):</div>
+    <div class="out-box" id="mp-mu" style="max-height:50px;color:#38bdf8"></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-rhodouble" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>② ρ″ — 64 bytes signing randomness</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div class="out-box" id="mp-rhodouble" style="max-height:50px;color:#fb923c"></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-y" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>③ y — masking vector (4 column vectors, γ₁=131072)</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-y-stats" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;margin-bottom:6px"></div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-y-grid"></div></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-w" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>④ w = A·y, then w₁ = HighBits(w), w₀ = LowBits(w)</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-w-params" style="font-size:0.78em;color:#475569;margin-top:6px;margin-bottom:6px;background:#f0f4f8;border-radius:4px;padding:6px 10px"></div>
+    <div class="mp-label">w = A·y (mod q):</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-w-grid"></div></div>
+    <div class="mp-label">w₁ = HighBits(w, 2γ₂):</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-w1-grid"></div></div>
+    <div class="mp-label">w₀ = LowBits(w, 2γ₂):</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-w0-grid"></div></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-ctilde" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑤ c̃ = SHAKE256(μ ∥ w₁) — 32 bytes</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div class="out-box" id="mp-ctilde" style="max-height:50px;color:#7c3aed"></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-c" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑥ c = SampleInBall(c̃, τ=39) — sparse challenge polynomial</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-c-stats" style="font-size:0.78em;color:#475569;margin-top:6px;margin-bottom:6px;background:#f0f4f8;border-radius:4px;padding:6px 10px"></div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-c-grid"></div></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-z" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑦ c·s₁ then z = y + c·s₁</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-z-note" style="font-size:0.78em;color:#475569;margin-top:6px;margin-bottom:6px;background:#f0f4f8;border-radius:4px;padding:6px 10px"></div>
+    <div class="mp-label">c·s₁ (intermediate):</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-cs1-grid"></div></div>
+    <div class="mp-label">z = y + c·s₁:</div>
+    <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-z-grid"></div></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-check" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑧ Bound check ‖z‖∞ &lt; γ₁ − β</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-check-params" style="font-size:0.78em;color:#475569;margin-bottom:6px;background:#f0f4f8;border-radius:4px;padding:6px 10px;margin-top:6px">
+      γ₁ = 2¹⁷ = 131,072 &nbsp;|&nbsp; β = τ·η = 39·2 = 78 &nbsp;|&nbsp; threshold = γ₁ − β = 130,994 &nbsp;|&nbsp; ω = 80 (ML-DSA-44, FIPS 204 Table 1)
+    </div>
+    <div class="out-box" id="mp-check-result" style="max-height:70px"></div>
+    </div>
+  </div>
+
+  <div class="mp-section" id="mp-sign-hints" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑨ Hint computation — MakeHint per FIPS 204 §6 Alg.8</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-hint-formula" style="font-size:0.78em;color:#1e3a5f;margin-top:6px;margin-bottom:8px;background:#dbeafe;border-radius:4px;padding:8px 10px;border-left:3px solid #3b82f6">
+      MakeHint(z, r) = 1 iff HighBits(r, 2γ₂) ≠ HighBits(r + z, 2γ₂)<br/>
+      where z = −c·t₀,  r = w − c·s₂
+    </div>
+    <div class="mp-label">w (from step ④):</div>
+    <div class="out-box" id="mp-hint-w" style="max-height:40px"></div>
+    <div class="mp-label">c·s₂:</div>
+    <div class="out-box" id="mp-hint-cs2" style="max-height:40px"></div>
+    <div class="mp-label">w − c·s₂ (= r):</div>
+    <div class="out-box" id="mp-hint-r" style="max-height:40px"></div>
+    <div class="mp-label">c·t₀:</div>
+    <div class="out-box" id="mp-hint-ct0" style="max-height:40px"></div>
+    <div class="mp-label">w − c·s₂ + c·t₀ (= r + (−z) = r − z):</div>
+    <div class="out-box" id="mp-hint-rz" style="max-height:40px"></div>
+    <div class="mp-label">h = hint positions where HighBits differ:</div>
+    <div class="out-box" id="mp-hints" style="max-height:60px"></div>
+    </div>
+  </div>
+
+  <div class="mp-section green" id="mp-sign-sig" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑩ Final Signature σ = (c̃ ∥ z ∥ h) — 2420 bytes</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+    <div id="mp-sig-summary"></div>
+    </div>
+  </div>
+
+
+  <!-- ── VERIFICATION MAIN PANEL ── -->
+
+  <!-- Verification header -->
+  <div class="mp-section" id="mp-verif-section" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>🔍 Verification — Bob receives σ = (c̃ ∥ z ∥ h)</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div class="mp-label">Message being verified:</div>
+      <div class="out-box" id="mp-verif-msg" style="max-height:40px;color:#0369a1"></div>
+      <div id="mp-verif-sig-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- Step ⑪: μ -->
+  <div class="mp-section" id="mp-verif-mu" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑪ μ = SHAKE256(tr ∥ M) — Bob's recomputation</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div id="mp-verif-mu-inputs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+      <div class="mp-label">μ (output — 64 bytes):</div>
+      <div class="out-box" id="mp-verif-mu-val" style="max-height:50px;color:#38bdf8"></div>
+    </div>
+  </div>
+
+  <!-- Step ⑫: c -->
+  <div class="mp-section" id="mp-verif-c" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑫ c = SampleInBall(c̃) — reconstructed challenge polynomial</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div id="mp-verif-c-stats" style="font-size:0.78em;color:#475569;margin-top:6px;margin-bottom:6px;background:#f0f4f8;border-radius:4px;padding:6px 10px"></div>
+      <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-verif-c-grid"></div></div>
+    </div>
+  </div>
+
+  <!-- Step ⑬: w′ -->
+  <div class="mp-section" id="mp-verif-wprime" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑬ w′ = A·z − c·t₁·2ᵈ — approximated commitment</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div id="mp-verif-wprime-note" style="font-size:0.78em;color:#475569;margin-top:6px;margin-bottom:6px;background:#f0f4f8;border-radius:4px;padding:6px 10px"></div>
+      <div class="mp-label">A·z (intermediate):</div>
+      <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-verif-Az-grid"></div></div>
+      <div class="mp-label">c·t₁·2<sup>d</sup> (intermediate):</div>
+      <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-verif-ct1-grid"></div></div>
+      <div class="mp-label">w′ = A·z − c·t₁·2ᵈ:</div>
+      <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-verif-wprime-grid"></div></div>
+    </div>
+  </div>
+
+  <!-- Step ⑭: w₁′ -->
+  <div class="mp-section" id="mp-verif-w1prime" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑭ w₁′ = UseHint(h, w′) — hint-corrected high bits</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div id="mp-verif-hint-stats" style="font-size:0.78em;color:#475569;margin-top:6px;margin-bottom:6px;background:#dbeafe;border-radius:4px;padding:6px 10px;border-left:3px solid #3b82f6"></div>
+      <div class="mp-label">w₁′ — corrected high-bit vector:</div>
+      <div class="poly-matrix-wrap"><div class="poly-matrix" id="mp-verif-w1prime-grid"></div></div>
+    </div>
+  </div>
+
+  <!-- Step ⑮: c̃′ -->
+  <div class="mp-section" id="mp-verif-ctilde" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑮ c̃′ = SHAKE256(μ ∥ w₁′) — recomputed challenge seed</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div class="mp-label">c̃ from σ (Alice's):</div>
+      <div class="out-box" id="mp-verif-ctilde-sig" style="max-height:40px;color:#c4b5fd"></div>
+      <div class="mp-label">c̃′ recomputed by Bob:</div>
+      <div class="out-box" id="mp-verif-ctilde-prime" style="max-height:40px;color:#38bdf8"></div>
+    </div>
+  </div>
+
+  <!-- Step ⑯: Final result -->
+  <div class="mp-section" id="mp-verif-result" style="display:none">
+    <div class="mp-section-header" onclick="toggleMPSection(this)">
+      <h3>⑯ Final Verdict</h3>
+      <span class="mp-section-toggle">▼</span>
+    </div>
+    <div class="mp-section-body">
+      <div id="mp-verif-verdict"></div>
+    </div>
+  </div>
+
+</div><!-- end mp-content -->
+</div><!-- end mainpanel -->
+</div><!-- end main-layout -->
+</div><!-- end app -->
+
+<script src="/static/app.js?v=2"></script>
+</body>
+</html>
