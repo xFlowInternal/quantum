@@ -183,7 +183,7 @@ When the team develops a new application (e.g., a new quantum simulation tool), 
 
 ### Step 1: Run the New Application
 Deploy your new application using Docker. Ensure it exposes a unique internal port on the host machine.
-*Example: The new app exposes port `9093`.*
+*Example: The new app exposes port `9094`.*
 
 ### Step 2: Update NGINX Configuration
 Open `NGINX/nginx.conf` and add a new `location` block inside the `server { listen 443 ssl; ... }` block to route a specific URL path to your new app's port.
@@ -191,7 +191,7 @@ Open `NGINX/nginx.conf` and add a new `location` block inside the `server { list
 ```nginx
         # New Application Route
         location /new-app/ {
-            proxy_pass http://host.docker.internal:9093/;
+            proxy_pass http://host.docker.internal:9094/;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
