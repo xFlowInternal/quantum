@@ -135,38 +135,59 @@ sequenceDiagram
   2. To serve Let's Encrypt HTTP-01 challenges from the `/var/www/acme-challenge` directory.
 - **Certificate Renewal:** A script named `renew_certs.sh` is provided in the `NGINX/` directory. It uses the `acme.sh` Docker image in "webroot" mode to seamlessly renew certificates via Port 80 without requiring NGINX to stop, ensuring 100% uptime.
 
-#### SSL & Let's Encrypt Renewal Flow
+#### SSL & Let's Encrypt Renewal Flow (Under the Hood)
 
-This process is automated via the `renew_certs.sh` script. To ensure the certificates never expire, this script should be scheduled to run automatically on the **Host Server** (not inside a container) via a cron job.
+This process is fully automated via the `renew_certs.sh` script. To ensure the certificates never expire, this script should be scheduled to run automatically on the **Host Server** via a cron job.
 
-To configure this, log into the host server (`192.168.20.167`) and edit the crontab:
-```bash
-crontab -e
-```
-Add the following line to run the renewal script on the 1st of every month at midnight:
-```bash
-0 0 1 * * /home/xflow/quantum-team/quantum-website-conf/NGINX/renew_certs.sh >> /var/log/ssl_renewal.log 2>&1
-```
-*(The script is smart enough to only renew the certificate if Let's Encrypt determines it is within 30 days of expiring, otherwise it gracefully exits without doing anything).*
+> [!TIP]
+> **Host Cron Job Setup**
+> Log into the host server (`192.168.20.167`) and edit the crontab using `crontab -e`. Add the following line to run the renewal script on the 1st of every month at midnight:
+> ```bash
+> 0 0 1 * * /home/xflow/quantum-team/quantum-website-conf/NGINX/renew_certs.sh >> /var/log/ssl_renewal.log 2>&1
+> ```
+> *(The script is smart enough to only renew the certificate if Let's Encrypt determines it is within 30 days of expiring, otherwise it gracefully exits).*
+
+The renewal process involves seamless coordination between the host script, Docker, NGINX, and Let's Encrypt. Here is the exact step-by-step sequence of events:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Cron as Cron Job (Host)
-    participant ACME as acme.sh (Docker)
-    participant NGINX as NGINX (Docker)
+    participant Script as Host Script
+    participant Docker as Docker Daemon
+    participant ACME as acme.sh (Container)
+    participant Vol as Shared Volume
+    participant NGINX as NGINX (Container)
     participant LE as Let's Encrypt
 
-    Cron->>ACME: Triggers renew_certs.sh
-    ACME->>LE: Requests Certificate Renewal for quantum.xflowresearch.com
-    LE-->>ACME: Provides HTTP-01 Challenge Token
-    ACME->>NGINX: Writes Token to /var/www/acme-challenge/
-    LE->>NGINX: HTTP GET /.well-known/acme-challenge/<token>
-    NGINX-->>LE: Returns Token (Verification Success!)
-    LE-->>ACME: Issues New SSL Certificate
-    ACME->>NGINX: docker compose exec nginx nginx -s reload
-    Note over NGINX: NGINX reloads seamlessly<br/>with zero downtime
+    Script->>Docker: Starts script execution
+    Docker->>ACME: Starts temporary acme.sh container
+    ACME->>LE: Asks Let's Encrypt for renewal
+    LE-->>ACME: Requires domain-control proof
+    ACME->>Vol: Creates challenge file
+    Note right of Vol: File appears in ./acme-challenge on host
+    Vol-->>NGINX: NGINX sees file through volume mount
+    LE->>NGINX: Requests the challenge URL
+    NGINX-->>LE: Serves the challenge file
+    LE->>LE: Verifies challenge
+    LE-->>ACME: Issues the renewed certificate
+    ACME->>Vol: Stores certificate in ./letsencrypt
+    ACME->>Docker: Container exits
+    Docker->>Docker: Removes temporary container
+    Script->>NGINX: Executes `nginx -s reload`
+    NGINX->>NGINX: Reads the new certificate
+    Note over NGINX,LE: New HTTPS connections use the new certificate
 ```
+
+### 🔄 The Renewal Process Breakdown
+
+To better understand the diagram, the renewal process can be broken down into four key phases:
+
+| Phase | Steps | Description |
+| :--- | :---: | :--- |
+| **1. Initialization** | 1 - 2 | The scheduled script executes and spins up a lightweight, ephemeral `acme.sh` Docker container specifically for the renewal process. |
+| **2. Challenge Creation** | 3 - 7 | `acme.sh` requests a renewal. Let's Encrypt responds with an HTTP-01 challenge. The container writes this challenge file to a shared Docker volume. Both the host and the running NGINX container can instantly see this file. |
+| **3. Verification** | 8 - 11 | Let's Encrypt makes an HTTP request to our domain. NGINX serves the challenge file from the shared volume. Once verified, Let's Encrypt issues the new certificate. |
+| **4. Cleanup & Reload** | 12 - 17 | `acme.sh` saves the new certificates to the shared volume and exits. Docker cleans up the temporary container. Finally, the script instructs NGINX to gracefully reload (`nginx -s reload`). NGINX loads the new certificates with **zero downtime**, immediately securing all new visitors. |
 
 ### 2. NGINX Routing (`nginx.conf`)
 NGINX routes requests based on location blocks:
