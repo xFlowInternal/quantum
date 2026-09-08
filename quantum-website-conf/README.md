@@ -13,9 +13,11 @@ To help you seamlessly navigate the configuration, here is the physical layout o
 ```text
 quantum-website-conf/
 ├── NGINX/
-│   ├── docker-compose.yml   # Orchestrates the NGINX Reverse Proxy
+│   ├── docker-compose.yml   # Orchestrates the NGINX Reverse Proxy & WAF
 │   ├── nginx.conf           # The routing rules and SSL configuration
-│   └── renew_certs.sh       # Zero-downtime Let's Encrypt renewal script
+│   ├── renew_certs.sh       # Zero-downtime Let's Encrypt renewal script
+│   ├── .env                 # Environment variables (e.g., OPENAPPSEC_TOKEN)
+│   └── openappsec/          # WAF declarative config (local_policy.yaml)
 └── mlkem-webapp/
     ├── docker-compose.yml   # Orchestrates the MLKEM application
     ├── frontend/            # React/Vite Frontend source code
@@ -26,11 +28,12 @@ quantum-website-conf/
 
 ## What It Is
 
-Our infrastructure relies on three core technologies working perfectly in sync:
+Our infrastructure relies on four core technologies working perfectly in sync:
 
 1. **Docker:** A containerization platform. Instead of installing applications directly on the host server, we package our frontend, backend, and proxies into isolated "containers." This guarantees that the applications run exactly the same way everywhere, making deployments predictable and safe.
 2. **NGINX:** A high-performance web server acting as a **Reverse Proxy**. It sits at the absolute front door of our server environment. Its job is to listen for incoming web traffic and act as a "traffic cop," routing different URLs to different Docker containers, so we only need to expose one port to the public.
 3. **Let's Encrypt:** A free, automated certificate authority. We use it to automatically generate and renew the SSL certificates that give our website the secure `https://` green padlock, ensuring all user data is encrypted.
+4. **open-appsec:** A preemptive, machine-learning-based Web Application Firewall (WAF) that automatically protects our services from zero-day and OWASP top 10 attacks without relying on traditional signature updates.
 
 ---
 
@@ -43,7 +46,8 @@ When an internet user accesses `https://quantum.xflowresearch.com`, the traffic 
 ```mermaid
 flowchart LR
     User([Internet User]) -- "Visits URL" --> NGINX["NGINX (Reverse Proxy)"]
-    NGINX -- "Checks Path" --> Router{What is the path?}
+    NGINX -- "Inspected by" --> WAF["open-appsec WAF"]
+    WAF -- "Traffic Safe" --> Router{What is the path?}
     
     Router -- "Path: /" --> HTML["Serves Static HTML Paper"]
     Router -- "Path: /mlkem/" --> FE["Proxies to MLKEM Frontend"]
@@ -71,6 +75,8 @@ flowchart TD
                     Paper_Static[("Dummy Paper HTML<br>/")]
                 end
                 
+                WAF_Agent["open-appsec Agent Container<br>(Analyzes Traffic)"]
+                
                 FE["MLKEM Frontend Container<br>(Port 9092)"]
                 BE["MLKEM Backend Container<br>(Port 9091)"]
             end
@@ -81,6 +87,8 @@ flowchart TD
     Users -- "HTTP (80) & HTTPS (443)" --> Router
     Router -- "Port Forward" --> NGINX
     
+    NGINX <--"Shared Memory (IPC)"--> WAF_Agent
+    
     NGINX -- "Serves statically" --> LE_Static
     NGINX -- "Serves statically" --> Paper_Static
     
@@ -90,6 +98,7 @@ flowchart TD
     %% Optional Styling
     style Router fill:#f9d0c4,stroke:#333,stroke-width:2px
     style NGINX_Cont fill:#d4e6f1,stroke:#333,stroke-width:2px
+    style WAF_Agent fill:#fcf3cf,stroke:#f39c12,stroke-width:2px
     style XFlow fill:#f4f6f7,stroke:#95a5a6,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
@@ -189,7 +198,22 @@ To better understand the diagram, the renewal process can be broken down into fo
 | **3. Verification** | 8 - 11 | Let's Encrypt makes an HTTP request to our domain. NGINX serves the challenge file from the shared volume. Once verified, Let's Encrypt issues the new certificate. |
 | **4. Cleanup & Reload** | 12 - 17 | `acme.sh` saves the new certificates to the shared volume and exits. Docker cleans up the temporary container. Finally, the script instructs NGINX to gracefully reload (`nginx -s reload`). NGINX loads the new certificates with **zero downtime**, immediately securing all new visitors. |
 
-### 2. NGINX Routing (`nginx.conf`)
+### 2. Web Application Firewall (open-appsec)
+
+To protect our web applications from malicious attacks, we integrate open-appsec into our NGINX proxy.
+
+#### How it works architecturally:
+Instead of running NGINX and the WAF as one bloated application, they are decoupled:
+1. **The Attachment:** NGINX is built from a specialized image (`ghcr.io/openappsec/nginx-attachment:latest`) that contains a lightweight C-based module.
+2. **The Agent:** A completely separate Docker container (`openappsec-agent`) runs the heavy machine-learning security engine.
+3. **Communication (IPC):** NGINX intercepts incoming HTTP requests and passes them to the agent via ultra-fast shared memory (`ipc: host` in `docker-compose.yml`). The agent evaluates the request and tells NGINX whether to block or allow it.
+
+#### Hybrid Management Approach
+We manage the WAF using a "Hybrid" model:
+- **Declarative Configuration:** Our security rules are strictly defined as code in `NGINX/openappsec/agent-conf/local_policy.yaml`. If you want to change the protection mode (e.g., from `detect-learn` to `prevent`), you edit this file and commit it to git.
+- **SaaS Visibility:** While the policy is local, the agent streams its analytics, logs, and machine-learning baselines to the central [openappsec WebUI](https://my.openappsec.io). This is achieved by passing an `OPENAPPSEC_TOKEN` (stored securely in `.env`) into the agent's start command. This gives us a powerful dashboard without sacrificing our Infrastructure-as-Code setup!
+
+### 3. NGINX Routing (`nginx.conf`)
 NGINX routes requests based on location blocks:
 - `/`: Serves static HTML (the dummy research paper) directly from the NGINX container's file system at the root path.
 - `/mlkem/`: Proxies traffic to the MLKEM Frontend React application.
