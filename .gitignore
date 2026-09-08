@@ -1,0 +1,10 @@
+quantum-website-conf/NGINX/letsencrypt/quantum.xflowresearch.com_ecc/quantum.xflowresearch.com.key
+quantum-website-conf/NGINX/letsencrypt/account.conf
+quantum-website-conf/NGINX/nginx.conf
+quantum-website-conf/NGINX/.env
+
+# Ignore openappsec state, logs, and generated config
+quantum-website-conf/NGINX/openappsec/agent-data/
+quantum-website-conf/NGINX/openappsec/agent-logs/
+quantum-website-conf/NGINX/openappsec/agent-conf/*
+!quantum-website-conf/NGINX/openappsec/agent-conf/local_policy.yaml
