@@ -1,7 +1,7 @@
-version: '3'
 services:
   nginx:
     build: .
+    ipc: host
     ports:
       - "80:80"
       - "443:443"
@@ -10,3 +10,20 @@ services:
     volumes:
       - ./letsencrypt:/etc/letsencrypt:ro
       - ./acme-challenge:/var/www/acme-challenge:ro
+      - ./openappsec/agent-conf:/etc/cp/conf
+      - ./openappsec/agent-data:/etc/cp/data
+      - ./openappsec/agent-logs:/var/log/nano_agent
+    depends_on:
+      - openappsec-agent
+
+  openappsec-agent:
+    image: ghcr.io/openappsec/agent:latest
+    container_name: openappsec-agent
+    ipc: host
+    command: ["/cp-nano-agent", "--token", "${OPENAPPSEC_TOKEN}"]
+    environment:
+      registered_server: nginx
+    volumes:
+      - ./openappsec/agent-conf:/etc/cp/conf
+      - ./openappsec/agent-data:/etc/cp/data
+      - ./openappsec/agent-logs:/var/log/nano_agent
